@@ -58,6 +58,9 @@ export function createFakeStorage(): FakeStorage {
     async presignPut(): Promise<string> {
       throw new Error("not implemented in fake storage");
     },
+    async presignPost(): Promise<{ url: string; fields: Record<string, string> }> {
+      throw new Error("not implemented in fake storage");
+    },
   };
 }
 

@@ -5,6 +5,7 @@ import {
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
+import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { ObjectNotFoundError } from "./errors";
 
@@ -27,6 +28,11 @@ export interface GetObjectResult extends ObjectMetadata {
   stream: Readable;
 }
 
+export interface PresignedPost {
+  url: string;
+  fields: Record<string, string>;
+}
+
 export interface StorageClient {
   head(key: string): Promise<ObjectMetadata | null>;
   get(key: string): Promise<GetObjectResult>;
@@ -39,6 +45,14 @@ export interface StorageClient {
     key: string,
     opts: { contentType: string; expiresInSeconds?: number },
   ): Promise<string>;
+  // Presigned POST (vs. presignPut's presigned PUT) lets us enforce a hard
+  // max upload size via an S3 POST-policy condition. MinIO also implements
+  // S3 POST policies, so this works unmodified against the local
+  // docker-compose MinIO service.
+  presignPost(
+    key: string,
+    opts: { contentType: string; maxBytes: number; expiresInSeconds?: number },
+  ): Promise<PresignedPost>;
 }
 
 function isAwsErrorNamed(err: unknown, name: string): boolean {
@@ -106,6 +120,22 @@ export function createStorageClient(config: StorageConfig): StorageClient {
       return getSignedUrl(client, command, {
         expiresIn: opts.expiresInSeconds ?? 900,
       });
+    },
+
+    async presignPost(key, opts) {
+      const { url, fields } = await createPresignedPost(client, {
+        Bucket: config.bucket,
+        Key: key,
+        Conditions: [
+          ["content-length-range", 0, opts.maxBytes],
+          ["eq", "$Content-Type", opts.contentType],
+        ],
+        Fields: {
+          "Content-Type": opts.contentType,
+        },
+        Expires: opts.expiresInSeconds ?? 900,
+      });
+      return { url, fields };
     },
   };
 }

@@ -28,6 +28,12 @@ vi.mock("@aws-sdk/s3-request-presigner", () => ({
   getSignedUrl: (...args: unknown[]) => getSignedUrlMock(...args),
 }));
 
+const createPresignedPostMock = vi.fn();
+
+vi.mock("@aws-sdk/s3-presigned-post", () => ({
+  createPresignedPost: (...args: unknown[]) => createPresignedPostMock(...args),
+}));
+
 const config = {
   endpoint: "http://localhost:9000",
   region: "auto",
@@ -40,6 +46,7 @@ const config = {
 beforeEach(() => {
   sendMock.mockReset();
   getSignedUrlMock.mockReset();
+  createPresignedPostMock.mockReset();
 });
 
 describe("head", () => {
@@ -164,5 +171,54 @@ describe("presignPut", () => {
     expect(getSignedUrlMock).toHaveBeenCalledWith(expect.anything(), expect.anything(), {
       expiresIn: 900,
     });
+  });
+});
+
+describe("presignPost", () => {
+  it("calls createPresignedPost with bucket, key, content-type and a max-size condition", async () => {
+    createPresignedPostMock.mockResolvedValueOnce({
+      url: "https://signed.example/post",
+      fields: { key: "orgs/acme/orig/1", "Content-Type": "image/jpeg" },
+    });
+    const storage = createStorageClient(config);
+
+    const result = await storage.presignPost("orgs/acme/orig/1", {
+      contentType: "image/jpeg",
+      maxBytes: 1024,
+      expiresInSeconds: 300,
+    });
+
+    expect(result).toEqual({
+      url: "https://signed.example/post",
+      fields: { key: "orgs/acme/orig/1", "Content-Type": "image/jpeg" },
+    });
+    expect(createPresignedPostMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        Bucket: "img-assets",
+        Key: "orgs/acme/orig/1",
+        Conditions: [
+          ["content-length-range", 0, 1024],
+          ["eq", "$Content-Type", "image/jpeg"],
+        ],
+        Fields: { "Content-Type": "image/jpeg" },
+        Expires: 300,
+      }),
+    );
+  });
+
+  it("defaults the expiry to 900 seconds", async () => {
+    createPresignedPostMock.mockResolvedValueOnce({
+      url: "https://signed.example/post",
+      fields: {},
+    });
+    const storage = createStorageClient(config);
+
+    await storage.presignPost("orgs/acme/orig/1", { contentType: "image/jpeg", maxBytes: 1024 });
+
+    expect(createPresignedPostMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ Expires: 900 }),
+    );
   });
 });

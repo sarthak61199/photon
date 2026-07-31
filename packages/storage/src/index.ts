@@ -1,6 +1,7 @@
 export type {
   GetObjectResult,
   ObjectMetadata,
+  PresignedPost,
   StorageClient,
   StorageConfig,
 } from "./client";

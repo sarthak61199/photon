@@ -41,9 +41,15 @@ importers:
       '@img/storage':
         specifier: workspace:*
         version: link:../../packages/storage
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.2(pg@8.22.0)(postgres@3.4.9)
       hono:
         specifier: ^4.12.32
         version: 4.12.32
+      pg-boss:
+        specifier: ^12.26.3
+        version: 12.26.3
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -191,10 +197,16 @@ importers:
       drizzle-kit:
         specifier: ^0.31.10
         version: 0.31.10
+      tsx:
+        specifier: ^4.23.1
+        version: 4.23.1
 
   packages/storage:
     dependencies:
       '@aws-sdk/client-s3':
+        specifier: ^3.1098.0
+        version: 3.1098.0
+      '@aws-sdk/s3-presigned-post':
         specifier: ^3.1098.0
         version: 3.1098.0
       '@aws-sdk/s3-request-presigner':
@@ -257,6 +269,10 @@ packages:
 
   '@aws-sdk/nested-clients@3.997.38':
     resolution: {integrity: sha512-jQDs+nxnmgo4+WPOmY373HIC8jx4KyYYMYDI74FWrzX3Ba9fYsV0dSA+7PNYNkhRbbRCRLre83tQ31F1ACCHkA==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/s3-presigned-post@3.1098.0':
+    resolution: {integrity: sha512-SLLfHDGPnTW9Jnk8AO7CyduAbh113rXs8DLG0fcTAG11x80qZJ+dfY42Iab5E50OF0eKC/SBBCLPE1VD65touA==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/s3-request-presigner@3.1098.0':
@@ -3037,6 +3053,16 @@ snapshots:
       '@smithy/core': 3.31.1
       '@smithy/fetch-http-handler': 5.6.13
       '@smithy/node-http-handler': 4.9.13
+      '@smithy/types': 4.16.1
+      tslib: 2.8.1
+
+  '@aws-sdk/s3-presigned-post@3.1098.0':
+    dependencies:
+      '@aws-sdk/client-s3': 3.1098.0
+      '@aws-sdk/core': 3.977.3
+      '@aws-sdk/types': 3.974.2
+      '@smithy/core': 3.31.1
+      '@smithy/signature-v4': 5.6.12
       '@smithy/types': 4.16.1
       tslib: 2.8.1
 
