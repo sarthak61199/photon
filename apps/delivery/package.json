@@ -17,7 +17,8 @@
     "@img/db": "workspace:*",
     "@img/storage": "workspace:*",
     "hono": "^4.12.32",
-    "sharp": "^0.35.3"
+    "sharp": "^0.35.3",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",
