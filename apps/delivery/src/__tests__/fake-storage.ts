@@ -1,6 +1,6 @@
 import { Readable } from "node:stream";
-import type { StorageClient } from "@img/storage";
-import { ObjectNotFoundError } from "@img/storage";
+import type { StorageClient } from "@photon/storage";
+import { ObjectNotFoundError } from "@photon/storage";
 
 interface StoredObject {
   body: Buffer;

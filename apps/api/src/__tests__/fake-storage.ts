@@ -1,4 +1,4 @@
-import type { PresignedPost, StorageClient } from "@img/storage";
+import type { PresignedPost, StorageClient } from "@photon/storage";
 
 export interface FakePresignPostCall {
   key: string;

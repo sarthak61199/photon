@@ -1,4 +1,4 @@
-import type { Transform } from "@img/core";
+import type { Transform } from "@photon/core";
 
 export type ConcreteFormat = "jpg" | "png" | "webp" | "avif";
 export type SharpFormat = "jpeg" | "png" | "webp" | "avif";

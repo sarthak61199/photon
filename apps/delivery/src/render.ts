@@ -1,5 +1,5 @@
-import type { Transform } from "@img/core";
-import { fitMap } from "@img/core";
+import type { Transform } from "@photon/core";
+import { fitMap } from "@photon/core";
 import sharp from "sharp";
 import { sharpLimit } from "./concurrency";
 import type { SharpFormat } from "./format";

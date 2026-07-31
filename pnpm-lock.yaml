@@ -32,13 +32,13 @@ importers:
       '@hono/node-server':
         specifier: ^2.0.12
         version: 2.0.12(hono@4.12.32)
-      '@img/core':
+      '@photon/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@img/db':
+      '@photon/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@img/storage':
+      '@photon/storage':
         specifier: workspace:*
         version: link:../../packages/storage
       drizzle-orm:
@@ -63,10 +63,10 @@ importers:
 
   apps/dashboard:
     dependencies:
-      '@img/core':
+      '@photon/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@img/db':
+      '@photon/db':
         specifier: workspace:*
         version: link:../../packages/db
       '@radix-ui/react-dialog':
@@ -121,13 +121,13 @@ importers:
       '@hono/node-server':
         specifier: ^2.0.12
         version: 2.0.12(hono@4.12.32)
-      '@img/core':
+      '@photon/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@img/db':
+      '@photon/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@img/storage':
+      '@photon/storage':
         specifier: workspace:*
         version: link:../../packages/storage
       hono:
@@ -152,13 +152,13 @@ importers:
 
   apps/worker:
     dependencies:
-      '@img/core':
+      '@photon/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@img/db':
+      '@photon/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@img/storage':
+      '@photon/storage':
         specifier: workspace:*
         version: link:../../packages/storage
       pg-boss:

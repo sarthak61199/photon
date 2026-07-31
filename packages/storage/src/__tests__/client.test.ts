@@ -37,7 +37,7 @@ vi.mock("@aws-sdk/s3-presigned-post", () => ({
 const config = {
   endpoint: "http://localhost:9000",
   region: "auto",
-  bucket: "img-assets",
+  bucket: "photon-assets",
   accessKeyId: "test",
   secretAccessKey: "test",
   forcePathStyle: true,
@@ -62,7 +62,7 @@ describe("head", () => {
 
     expect(meta).toEqual({ contentType: "image/jpeg", contentLength: 1234, etag: '"abc"' });
     expect(sendMock).toHaveBeenCalledWith(
-      expect.objectContaining({ input: { Bucket: "img-assets", Key: "orgs/acme/orig/1" } }),
+      expect.objectContaining({ input: { Bucket: "photon-assets", Key: "orgs/acme/orig/1" } }),
     );
   });
 
@@ -100,7 +100,7 @@ describe("get", () => {
     expect(result.contentType).toBe("image/png");
     expect(result.contentLength).toBe(42);
     expect(sendMock).toHaveBeenCalledWith(
-      expect.objectContaining({ input: { Bucket: "img-assets", Key: "orgs/acme/orig/1" } }),
+      expect.objectContaining({ input: { Bucket: "photon-assets", Key: "orgs/acme/orig/1" } }),
     );
   });
 
@@ -125,14 +125,14 @@ describe("put", () => {
   it("sends a PutObjectCommand with bucket, key, body and content type", async () => {
     sendMock.mockResolvedValueOnce({});
     const storage = createStorageClient(config);
-    const body = Buffer.from("img-bytes");
+    const body = Buffer.from("photon-bytes");
 
     await storage.put("orgs/acme/deriv/1/w_800.webp", body, { contentType: "image/webp" });
 
     expect(sendMock).toHaveBeenCalledWith(
       expect.objectContaining({
         input: {
-          Bucket: "img-assets",
+          Bucket: "photon-assets",
           Key: "orgs/acme/deriv/1/w_800.webp",
           Body: body,
           ContentType: "image/webp",
@@ -156,7 +156,7 @@ describe("presignPut", () => {
     expect(getSignedUrlMock).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        input: { Bucket: "img-assets", Key: "orgs/acme/orig/1", ContentType: "image/jpeg" },
+        input: { Bucket: "photon-assets", Key: "orgs/acme/orig/1", ContentType: "image/jpeg" },
       }),
       { expiresIn: 300 },
     );
@@ -195,7 +195,7 @@ describe("presignPost", () => {
     expect(createPresignedPostMock).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        Bucket: "img-assets",
+        Bucket: "photon-assets",
         Key: "orgs/acme/orig/1",
         Conditions: [
           ["content-length-range", 0, 1024],

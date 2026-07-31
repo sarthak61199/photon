@@ -1,5 +1,10 @@
-import { BadTransformError, parseTransforms, UnauthorizedError, verifySignature } from "@img/core";
-import { ObjectNotFoundError } from "@img/storage";
+import {
+  BadTransformError,
+  parseTransforms,
+  UnauthorizedError,
+  verifySignature,
+} from "@photon/core";
+import { ObjectNotFoundError } from "@photon/storage";
 import { Hono } from "hono";
 import { ZodError } from "zod";
 import { getConfig } from "./config";

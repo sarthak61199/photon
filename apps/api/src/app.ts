@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { assets } from "@img/db";
+import { assets } from "@photon/db";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { ZodError, z } from "zod";

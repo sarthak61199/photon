@@ -1,5 +1,5 @@
-import type { Transform } from "@img/core";
-import { parseTransforms } from "@img/core";
+import type { Transform } from "@photon/core";
+import { parseTransforms } from "@photon/core";
 import { describe, expect, it } from "vitest";
 import {
   assertSafeOrg,

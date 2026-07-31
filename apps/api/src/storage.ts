@@ -1,5 +1,5 @@
-import type { StorageClient, StorageConfig } from "@img/storage";
-import { createStorageClient } from "@img/storage";
+import type { StorageClient, StorageConfig } from "@photon/storage";
+import { createStorageClient } from "@photon/storage";
 
 function getStorageConfig(): StorageConfig {
   return {

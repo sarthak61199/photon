@@ -1,4 +1,4 @@
-import { parseTransforms, sign } from "@img/core";
+import { parseTransforms, sign } from "@photon/core";
 import sharp from "sharp";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { app } from "../app";

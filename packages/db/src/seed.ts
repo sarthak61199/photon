@@ -3,7 +3,7 @@ import { createDbClient } from "./client";
 import { apiKeys, orgs } from "./schema";
 
 async function main(): Promise<void> {
-  const url = process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:5432/img";
+  const url = process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:5432/photon";
   const { db, close } = createDbClient({ url });
 
   try {

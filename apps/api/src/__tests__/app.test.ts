@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { ApiKey, Org } from "@img/db";
+import type { ApiKey, Org } from "@photon/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { app } from "../app";
 import { fakeDbClient } from "./fake-db";

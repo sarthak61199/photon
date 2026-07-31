@@ -1,4 +1,4 @@
-import type { StorageClient } from "@img/storage";
+import type { StorageClient } from "@photon/storage";
 
 export function persistDerivative(
   storage: StorageClient,

@@ -1,5 +1,5 @@
-import type { Transform } from "@img/core";
-import { transformKey } from "@img/core";
+import type { Transform } from "@photon/core";
+import { transformKey } from "@photon/core";
 
 // Hono's router already collapses literal ".." segments that sit between real
 // slashes before a route ever matches. The residual attack surface is an

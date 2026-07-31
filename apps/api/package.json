@@ -1,5 +1,5 @@
 {
-  "name": "@img/api",
+  "name": "@photon/api",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -13,9 +13,9 @@
   },
   "dependencies": {
     "@hono/node-server": "^2.0.12",
-    "@img/core": "workspace:*",
-    "@img/db": "workspace:*",
-    "@img/storage": "workspace:*",
+    "@photon/core": "workspace:*",
+    "@photon/db": "workspace:*",
+    "@photon/storage": "workspace:*",
     "drizzle-orm": "^0.45.2",
     "hono": "^4.12.32",
     "pg-boss": "^12.26.3",

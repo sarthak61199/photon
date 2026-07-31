@@ -1,5 +1,5 @@
-import type { DbClient } from "@img/db";
-import { createDbClient } from "@img/db";
+import type { DbClient } from "@photon/db";
+import { createDbClient } from "@photon/db";
 import { getConfig } from "./config";
 
 let client: DbClient | undefined;

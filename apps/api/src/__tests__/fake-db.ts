@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import type { ApiKey, Asset, DbClient, NewApiKey, NewAsset, NewOrg, Org } from "@img/db";
-import { apiKeys, assets, orgs } from "@img/db";
+import type { ApiKey, Asset, DbClient, NewApiKey, NewAsset, NewOrg, Org } from "@photon/db";
+import { apiKeys, assets, orgs } from "@photon/db";
 import { is, Param, type SQL } from "drizzle-orm";
 
 type Row = Record<string, unknown>;

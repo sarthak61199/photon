@@ -1,5 +1,5 @@
 {
-  "name": "@img/core",
+  "name": "@photon/core",
   "private": true,
   "version": "0.0.0",
   "type": "module",

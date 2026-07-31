@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { apiKeys } from "@img/db";
+import { apiKeys } from "@photon/db";
 import { eq } from "drizzle-orm";
 import { createMiddleware } from "hono/factory";
 import { getDbClient } from "./db";

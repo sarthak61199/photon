@@ -1,4 +1,4 @@
-# img
+# Photon
 
 Cloudinary/Gumlet-style image SaaS. Architecture and design docs:
 

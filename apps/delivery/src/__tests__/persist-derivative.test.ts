@@ -1,4 +1,4 @@
-import type { StorageClient } from "@img/storage";
+import type { StorageClient } from "@photon/storage";
 import { describe, expect, it, vi } from "vitest";
 import { persistDerivative } from "../persist-derivative";
 

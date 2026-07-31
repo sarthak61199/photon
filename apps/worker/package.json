@@ -1,5 +1,5 @@
 {
-  "name": "@img/worker",
+  "name": "@photon/worker",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -12,9 +12,9 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@img/core": "workspace:*",
-    "@img/db": "workspace:*",
-    "@img/storage": "workspace:*",
+    "@photon/core": "workspace:*",
+    "@photon/db": "workspace:*",
+    "@photon/storage": "workspace:*",
     "pg-boss": "^12.26.3"
   },
   "devDependencies": {
