@@ -6,7 +6,7 @@ export interface DeliveryConfig {
 
 export function getConfig(): DeliveryConfig {
   return {
-    port: Number(process.env.PORT ?? 8788),
+    port: Number(process.env.DELIVERY_PORT ?? process.env.PORT ?? 8788),
     requireSignedUrls: process.env.DELIVERY_REQUIRE_SIGNED_URLS === "true",
     signingKey: Buffer.from(process.env.DELIVERY_SIGNING_KEY ?? "dev-signing-key"),
   };
