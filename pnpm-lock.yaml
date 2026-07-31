@@ -194,6 +194,10 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: ^3.1098.0
         version: 3.1098.0
+    devDependencies:
+      '@types/node':
+        specifier: ^26.1.2
+        version: 26.1.2
 
 packages:
 
