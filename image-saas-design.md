@@ -260,7 +260,7 @@ app.get("/:org/:transforms/:path{.+}", async (c) => {
 
   // 2. Parse + verify
   const t = parseTransforms(transforms);
-  if (asset.org.requiresSignedUrls) verifySignature(c.req, asset.org.urlSignKey);
+  if (asset.org.requiresSignedUrls) verifySignature(c.req.path, asset.org.urlSignKey);
 
   // 3. Negotiate f_auto via Accept header
   const ext = t.f === "auto" ? pickFormat(c.req.header("accept")) : t.f;
@@ -318,15 +318,17 @@ export function sign(path: string, key: Buffer): string {
   return createHmac("sha256", key).update(path).digest("base64url").slice(0, 16);
 }
 
-export function verifySignature(req: HonoRequest, key: Buffer) {
-  const m = req.path.match(/^\/[^/]+\/s_([^,/]+)[,/](.+)$/);
+export function verifySignature(path: string, key: Buffer): void {
+  const m = path.match(/^\/[^/]+\/s_([^,/]+)[,/](.+)$/);
   if (!m) throw new UnauthorizedError();
   const [, sig, rest] = m;
-  const expected = sign(rest, key);
-  const a = Buffer.from(sig), b = Buffer.from(expected);
+  const expected = sign(rest ?? "", key);
+  const a = Buffer.from(sig ?? ""), b = Buffer.from(expected);
   if (a.length !== b.length || !timingSafeEqual(a, b)) throw new UnauthorizedError();
 }
 ```
+
+`verifySignature` takes a plain `path: string` rather than `HonoRequest` — `packages/core` has zero framework dependencies (only `zod`), so it stays framework-agnostic; the calling Hono route passes `c.req.path` in.
 
 Free plans can run unsigned but rate-limited; paid plans toggle `requiresSignedUrls`.
 
