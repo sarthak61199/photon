@@ -15,7 +15,9 @@
     "@photon/core": "workspace:*",
     "@photon/db": "workspace:*",
     "@photon/storage": "workspace:*",
-    "pg-boss": "^12.26.3"
+    "drizzle-orm": "^0.45.2",
+    "pg-boss": "^12.26.3",
+    "sharp": "^0.35.3"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",

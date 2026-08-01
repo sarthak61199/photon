@@ -161,9 +161,15 @@ importers:
       '@photon/storage':
         specifier: workspace:*
         version: link:../../packages/storage
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.2(pg@8.22.0)(postgres@3.4.9)
       pg-boss:
         specifier: ^12.26.3
         version: 12.26.3
+      sharp:
+        specifier: ^0.35.3
+        version: 0.35.3(@types/node@26.1.2)
     devDependencies:
       '@types/node':
         specifier: ^26.1.2
