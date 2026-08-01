@@ -1,17 +1,30 @@
-import { bigint, date, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  bigint,
+  date,
+  index,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
 
 // The design doc specifies `PARTITION BY RANGE (occurred_at)` with monthly
 // partitions. drizzle-kit can't express PARTITION BY, and a partitioned table
 // with no partition-maintenance job would start rejecting inserts once the
 // bootstrap partitions are exhausted — worse than a plain table for now.
 // Deferred until apps/worker has a job to pre-create future partitions.
-export const usageEvents = pgTable("usage_events", {
-  id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity(),
-  orgId: uuid("org_id").notNull(),
-  kind: text("kind").notNull(),
-  quantity: bigint("quantity", { mode: "number" }).notNull(),
-  occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const usageEvents = pgTable(
+  "usage_events",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity(),
+    orgId: uuid("org_id").notNull(),
+    kind: text("kind").notNull(),
+    quantity: bigint("quantity", { mode: "number" }).notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("usage_events_occurred_at_idx").on(table.occurredAt)],
+);
 
 export const usageDaily = pgTable(
   "usage_daily",
