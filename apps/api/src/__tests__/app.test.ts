@@ -550,7 +550,7 @@ describe("POST /v1/webhooks", () => {
     const res = await app.request("/v1/webhooks", {
       method: "POST",
       headers: { ...authHeaders(rawKey), "content-type": "application/json" },
-      body: JSON.stringify({ url: "https://example.com/hook" }),
+      body: JSON.stringify({ url: "https://93.184.216.34/hook" }),
     });
 
     expect(res.status).toBe(201);
@@ -562,7 +562,7 @@ describe("POST /v1/webhooks", () => {
       events: string[];
     };
     expect(body.orgId).toBe(org.id);
-    expect(body.url).toBe("https://example.com/hook");
+    expect(body.url).toBe("https://93.184.216.34/hook");
     expect(body.secret).toMatch(/^[0-9a-f]{64}$/);
     expect(body.events).toEqual(["asset.ready", "asset.failed"]);
 
@@ -576,7 +576,7 @@ describe("POST /v1/webhooks", () => {
     const res = await app.request("/v1/webhooks", {
       method: "POST",
       headers: { ...authHeaders(rawKey), "content-type": "application/json" },
-      body: JSON.stringify({ url: "https://example.com/hook", events: ["asset.failed"] }),
+      body: JSON.stringify({ url: "https://93.184.216.34/hook", events: ["asset.failed"] }),
     });
 
     expect(res.status).toBe(201);
@@ -590,10 +590,24 @@ describe("POST /v1/webhooks", () => {
     const res = await app.request("/v1/webhooks", {
       method: "POST",
       headers: { ...authHeaders(rawKey), "content-type": "application/json" },
-      body: JSON.stringify({ url: "https://example.com/hook", events: [] }),
+      body: JSON.stringify({ url: "https://93.184.216.34/hook", events: [] }),
     });
 
     expect(res.status).toBe(400);
+  });
+
+  it("returns 400 for a private/internal webhook URL without storing it", async () => {
+    const { rawKey } = seedOrgWithKey();
+
+    const res = await app.request("/v1/webhooks", {
+      method: "POST",
+      headers: { ...authHeaders(rawKey), "content-type": "application/json" },
+      body: JSON.stringify({ url: "http://127.0.0.1/hook" }),
+    });
+
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as ErrorBody).error).toBe("unsafe_url");
+    expect(fakeDbClient.fake.getWebhooks()).toHaveLength(0);
   });
 });
 

@@ -1,4 +1,5 @@
 import { createHmac } from "node:crypto";
+import { assertPublicHttpUrl } from "@photon/core";
 import type { DbClient } from "@photon/db";
 import { getDbClient } from "./db";
 import { enqueueDeliverWebhook } from "./queue";
@@ -38,13 +39,18 @@ export async function deliverWebhookJob(job: DeliverWebhookJob): Promise<void> {
     return;
   }
 
+  await assertPublicHttpUrl(webhook.url);
+
   const body = JSON.stringify({ event, payload });
   const signature = createHmac("sha256", webhook.secret).update(body).digest("hex");
 
+  // redirect: "manual" — a redirect target would bypass the SSRF check above,
+  // so webhook deliveries never follow redirects; a 3xx is treated as failure.
   const res = await fetch(webhook.url, {
     method: "POST",
     headers: { "content-type": "application/json", "x-photon-signature": signature },
     body,
+    redirect: "manual",
   });
 
   if (!res.ok) {

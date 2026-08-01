@@ -6,7 +6,7 @@ function webhook(overrides: Partial<Webhook> = {}): Webhook {
   return {
     id: "wh_1",
     orgId: "org_1",
-    url: "https://example.com/hook",
+    url: "https://93.184.216.34/hook",
     secret: "shh",
     events: ["asset.ready", "asset.failed"],
     ...overrides,
@@ -88,6 +88,7 @@ describe("deliverWebhookJob", () => {
     const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
     expect(url).toBe(currentWebhook?.url);
     expect(init.method).toBe("POST");
+    expect(init.redirect).toBe("manual");
 
     const body = init.body as string;
     const expectedSignature = createHmac("sha256", currentWebhook?.secret ?? "")
@@ -99,6 +100,26 @@ describe("deliverWebhookJob", () => {
 
   it("throws when the receiving endpoint returns a non-2xx status", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 500 }));
+
+    await expect(
+      deliverWebhookJob({ data: { webhookId: "wh_1", event: "asset.ready", payload: {} } }),
+    ).rejects.toThrow();
+  });
+
+  it("refuses to deliver to a private address without calling fetch", async () => {
+    currentWebhook = webhook({ url: "http://127.0.0.1/hook" });
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+
+    await expect(
+      deliverWebhookJob({ data: { webhookId: "wh_1", event: "asset.ready", payload: {} } }),
+    ).rejects.toThrow(/private/i);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("throws when the endpoint responds with a redirect", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(null, { status: 302, headers: { location: "http://127.0.0.1/evil" } }),
+    );
 
     await expect(
       deliverWebhookJob({ data: { webhookId: "wh_1", event: "asset.ready", payload: {} } }),

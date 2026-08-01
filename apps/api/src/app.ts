@@ -312,6 +312,9 @@ app.post("/v1/purge", apiKeyAuth, requireScope("write"), async (c) => {
 
 app.post("/v1/webhooks", apiKeyAuth, requireScope("write"), async (c) => {
   const { url, events } = CreateWebhookSchema.parse(await c.req.json());
+
+  await assertPublicHttpUrl(url);
+
   const orgId = c.get("orgId");
   const secret = randomBytes(32).toString("hex");
   const { db } = getDbClient();
