@@ -19,6 +19,7 @@ vi.mock("@aws-sdk/client-s3", () => {
     HeadObjectCommand: class extends FakeCommand {},
     GetObjectCommand: class extends FakeCommand {},
     PutObjectCommand: class extends FakeCommand {},
+    DeleteObjectCommand: class extends FakeCommand {},
   };
 });
 
@@ -138,6 +139,19 @@ describe("put", () => {
           ContentType: "image/webp",
         },
       }),
+    );
+  });
+});
+
+describe("delete", () => {
+  it("sends a DeleteObjectCommand with bucket and key", async () => {
+    sendMock.mockResolvedValueOnce({});
+    const storage = createStorageClient(config);
+
+    await storage.delete("orgs/acme/orig/1");
+
+    expect(sendMock).toHaveBeenCalledWith(
+      expect.objectContaining({ input: { Bucket: "photon-assets", Key: "orgs/acme/orig/1" } }),
     );
   });
 });

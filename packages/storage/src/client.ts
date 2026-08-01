@@ -1,5 +1,6 @@
 import type { Readable } from "node:stream";
 import {
+  DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
   PutObjectCommand,
@@ -41,6 +42,7 @@ export interface StorageClient {
     body: Buffer | Uint8Array | Readable,
     opts?: { contentType?: string },
   ): Promise<void>;
+  delete(key: string): Promise<void>;
   presignPut(
     key: string,
     opts: { contentType: string; expiresInSeconds?: number },
@@ -109,6 +111,10 @@ export function createStorageClient(config: StorageConfig): StorageClient {
           ContentType: opts?.contentType,
         }),
       );
+    },
+
+    async delete(key) {
+      await client.send(new DeleteObjectCommand({ Bucket: config.bucket, Key: key }));
     },
 
     async presignPut(key, opts) {

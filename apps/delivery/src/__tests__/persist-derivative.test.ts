@@ -8,6 +8,7 @@ function createStorageStub(putImpl: StorageClient["put"]): StorageClient {
     head: vi.fn(),
     get: vi.fn(),
     put: putImpl,
+    delete: vi.fn(),
     presignPut: vi.fn(),
     presignPost: vi.fn(),
   };

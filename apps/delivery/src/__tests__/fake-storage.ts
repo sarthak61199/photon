@@ -55,6 +55,9 @@ export function createFakeStorage(): FakeStorage {
       const buf = await toBuffer(body);
       store.set(key, { body: buf, contentType: opts?.contentType });
     },
+    async delete(key) {
+      store.delete(key);
+    },
     async presignPut(): Promise<string> {
       throw new Error("not implemented in fake storage");
     },
