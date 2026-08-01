@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import type { Asset, DbClient, NewAsset, NewOrg, Org } from "@photon/db";
+import type { Asset, DbClient, Derivative, NewAsset, NewDerivative, NewOrg, Org } from "@photon/db";
+import { derivatives } from "@photon/db";
 
 type Row = Record<string, unknown>;
 type Predicate<T> = (row: T) => boolean;
@@ -45,12 +46,14 @@ function createRelationalQuery<T extends Row>(store: Map<string, T>) {
 export interface FakeDb {
   seedOrg(org: Partial<NewOrg> & { id?: string; slug: string }): Org;
   seedAsset(asset: Partial<NewAsset> & { orgId: string; publicId: string }): Asset;
+  listDerivatives(): Derivative[];
   clear(): void;
 }
 
 export function createFakeDbClient(): DbClient & { fake: FakeDb } {
   const orgsStore = new Map<string, Org>();
   const assetsStore = new Map<string, Asset>();
+  const derivativesStore = new Map<string, Derivative>();
 
   const fake: FakeDb = {
     seedOrg(org) {
@@ -89,9 +92,13 @@ export function createFakeDbClient(): DbClient & { fake: FakeDb } {
       assetsStore.set(id, full);
       return full;
     },
+    listDerivatives() {
+      return [...derivativesStore.values()];
+    },
     clear() {
       orgsStore.clear();
       assetsStore.clear();
+      derivativesStore.clear();
     },
   };
 
@@ -100,8 +107,34 @@ export function createFakeDbClient(): DbClient & { fake: FakeDb } {
     assets: createRelationalQuery(assetsStore),
   };
 
+  function insert(table: unknown) {
+    if (table !== derivatives) throw new Error("fake db: unsupported insert table");
+    return {
+      values(row: NewDerivative) {
+        return {
+          async onConflictDoNothing() {
+            const dup = [...derivativesStore.values()].some(
+              (existing) =>
+                existing.assetId === row.assetId && existing.transformKey === row.transformKey,
+            );
+            if (dup) return;
+            const id = row.id ?? randomUUID();
+            derivativesStore.set(id, {
+              id,
+              assetId: row.assetId,
+              transformKey: row.transformKey,
+              storageKey: row.storageKey,
+              bytes: row.bytes ?? null,
+              createdAt: row.createdAt ?? new Date(),
+            });
+          },
+        };
+      },
+    };
+  }
+
   return {
-    db: { query } as unknown as DbClient["db"],
+    db: { query, insert } as unknown as DbClient["db"],
     close: async () => {},
     fake,
   };

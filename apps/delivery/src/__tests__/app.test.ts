@@ -95,6 +95,11 @@ describe("GET /:org/:transforms/:path", () => {
     await vi.waitFor(() => {
       expect(fakeStorage.has(derivKey)).toBe(true);
     });
+    await vi.waitFor(() => {
+      expect(fakeDb.fake.listDerivatives()).toContainEqual(
+        expect.objectContaining({ assetId: asset.id, storageKey: derivKey }),
+      );
+    });
   });
 
   it("serves the cached derivative without re-fetching the original", async () => {

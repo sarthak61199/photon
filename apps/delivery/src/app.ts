@@ -1,12 +1,14 @@
 import {
   BadTransformError,
   parseTransforms,
+  transformKey,
   UnauthorizedError,
   verifySignature,
 } from "@photon/core";
 import { ObjectNotFoundError } from "@photon/storage";
 import { Hono } from "hono";
 import { ZodError } from "zod";
+import { getDbClient } from "./db";
 import { AssetNotFoundError, AssetNotReadyError, OrgNotFoundError } from "./errors";
 import { resolveFormat } from "./format";
 import { assertSafeOrg, assertSafePublicId, derivativeKey, PathTraversalError } from "./keys";
@@ -56,7 +58,10 @@ app.get("/:org/:transforms/:path{.+}", async (c) => {
     quality: transform.q ?? 80,
   });
 
-  persistDerivative(storage, derivKey, buffer, contentType);
+  persistDerivative(storage, getDbClient(), derivKey, buffer, contentType, {
+    assetId: asset.id,
+    transformKey: transformKey(transform, ext),
+  });
   recordRequestUsage(resolvedOrg.id, { transformed: true, bytes: buffer.length });
 
   return c.body(new Uint8Array(buffer), 200, deliveryHeaders(contentType, publicId));
