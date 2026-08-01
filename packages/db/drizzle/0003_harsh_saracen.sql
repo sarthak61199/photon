@@ -1,0 +1,1 @@
+ALTER TABLE "orgs" ADD COLUMN "requires_signed_urls" boolean DEFAULT false NOT NULL;
