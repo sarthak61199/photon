@@ -1,13 +1,7 @@
 import type { Transform } from "@photon/core";
 import { parseTransforms } from "@photon/core";
 import { describe, expect, it } from "vitest";
-import {
-  assertSafeOrg,
-  assertSafePublicId,
-  derivativeKey,
-  originalKey,
-  PathTraversalError,
-} from "../keys";
+import { assertSafeOrg, assertSafePublicId, derivativeKey, PathTraversalError } from "../keys";
 
 describe("assertSafeOrg", () => {
   it("accepts a plain slug", () => {
@@ -49,18 +43,10 @@ describe("assertSafePublicId", () => {
   });
 });
 
-describe("originalKey", () => {
-  it("builds the orig storage key", () => {
-    expect(originalKey("acme", "products/shoe.jpg")).toBe("orgs/acme/orig/products/shoe.jpg");
-  });
-});
-
 describe("derivativeKey", () => {
-  it("builds the deriv storage key using the canonical transform key", () => {
+  it("builds the deriv storage key from org/asset IDs using the canonical transform key", () => {
     const t: Transform = parseTransforms("w_800,q_80");
-    const key = derivativeKey("acme", "products/shoe.jpg", t, "webp");
-    expect(key).toBe(
-      "orgs/acme/deriv/products/shoe.jpg/c_fit,dpr_1,f_auto,g_center,q_80,w_800.webp",
-    );
+    const key = derivativeKey("org-123", "asset-456", t, "webp");
+    expect(key).toBe("orgs/org-123/deriv/asset-456/c_fit,dpr_1,f_auto,g_center,q_80,w_800.webp");
   });
 });

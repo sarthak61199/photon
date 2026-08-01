@@ -3,6 +3,8 @@ import sharp from "sharp";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { app } from "../app";
 import { derivativeKey } from "../keys";
+import { resetAssetCache } from "../resolve-asset";
+import { createFakeDbClient } from "./fake-db";
 import { fakeStorage } from "./fake-storage";
 import { createFixtureJpeg } from "./fixtures";
 
@@ -11,13 +13,15 @@ vi.mock("../storage", async () => {
   return { getStorageClient: () => fakeStorage };
 });
 
+const fakeDb = createFakeDbClient();
+vi.mock("../db", () => ({
+  getDbClient: () => fakeDb,
+}));
+
 const recordRequestUsage = vi.fn();
 vi.mock("../usage", () => ({
   recordRequestUsage: (...args: unknown[]) => recordRequestUsage(...args),
 }));
-
-const ORIGINAL_ENV = { ...process.env };
-const ORIGINAL_KEY = "orgs/acme/orig/products/shoe.jpg";
 
 interface ErrorBody {
   error: string;
@@ -35,19 +39,31 @@ describe("GET /healthz", () => {
 describe("GET /:org/:transforms/:path", () => {
   let fixture: Buffer;
 
+  function seedReadyAsset(opts?: { requiresSignedUrls?: boolean; urlSignKey?: Buffer }) {
+    const org = fakeDb.fake.seedOrg({ slug: "acme", ...opts });
+    const asset = fakeDb.fake.seedAsset({
+      orgId: org.id,
+      publicId: "products/shoe.jpg",
+      status: "ready",
+    });
+    return { org, asset };
+  }
+
   beforeEach(async () => {
     fixture = await createFixtureJpeg({ width: 40, height: 20 });
     fakeStorage.clear();
+    fakeDb.fake.clear();
+    resetAssetCache();
     recordRequestUsage.mockClear();
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
-    process.env = { ...ORIGINAL_ENV };
   });
 
   it("transforms and returns the image on a cache miss", async () => {
-    fakeStorage.seed(ORIGINAL_KEY, fixture, "image/jpeg");
+    const { asset } = seedReadyAsset();
+    fakeStorage.seed(asset.storageKey, fixture, "image/jpeg");
 
     const res = await app.request("/acme/w_10,f_jpg/products/shoe.jpg");
 
@@ -61,16 +77,17 @@ describe("GET /:org/:transforms/:path", () => {
     const meta = await sharp(buf).metadata();
     expect(meta.width).toBe(10);
 
-    expect(recordRequestUsage).toHaveBeenCalledWith("acme", {
+    expect(recordRequestUsage).toHaveBeenCalledWith(asset.orgId, {
       transformed: true,
       bytes: buf.length,
     });
   });
 
   it("persists the derivative after a cache miss (write-behind)", async () => {
-    fakeStorage.seed(ORIGINAL_KEY, fixture, "image/jpeg");
+    const { org, asset } = seedReadyAsset();
+    fakeStorage.seed(asset.storageKey, fixture, "image/jpeg");
     const transform = parseTransforms("w_10,f_jpg");
-    const derivKey = derivativeKey("acme", "products/shoe.jpg", transform, "jpg");
+    const derivKey = derivativeKey(org.id, asset.id, transform, "jpg");
 
     const res = await app.request("/acme/w_10,f_jpg/products/shoe.jpg");
     expect(res.status).toBe(200);
@@ -81,8 +98,9 @@ describe("GET /:org/:transforms/:path", () => {
   });
 
   it("serves the cached derivative without re-fetching the original", async () => {
+    const { org, asset } = seedReadyAsset();
     const transform = parseTransforms("w_10,f_jpg");
-    const derivKey = derivativeKey("acme", "products/shoe.jpg", transform, "jpg");
+    const derivKey = derivativeKey(org.id, asset.id, transform, "jpg");
     const cached = await sharp(fixture).resize({ width: 10 }).jpeg().toBuffer();
     fakeStorage.seed(derivKey, cached, "image/jpeg");
     // deliberately do NOT seed the original — a hit must never touch it
@@ -93,22 +111,60 @@ describe("GET /:org/:transforms/:path", () => {
 
     expect(res.status).toBe(200);
     expect(getSpy).toHaveBeenCalledWith(derivKey);
-    expect(getSpy).not.toHaveBeenCalledWith(ORIGINAL_KEY);
-    expect(recordRequestUsage).toHaveBeenCalledWith("acme", {
+    expect(getSpy).not.toHaveBeenCalledWith(asset.storageKey);
+    expect(recordRequestUsage).toHaveBeenCalledWith(asset.orgId, {
       transformed: false,
       bytes: cached.length,
     });
   });
 
-  it("returns 404 when the original does not exist", async () => {
+  it("returns 404 when the org does not exist", async () => {
+    const res = await app.request("/nonexistent/w_10/products/shoe.jpg");
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as ErrorBody;
+    expect(body.error).toBe("not_found");
+  });
+
+  it("returns 404 when the asset does not exist", async () => {
+    fakeDb.fake.seedOrg({ slug: "acme" });
+
     const res = await app.request("/acme/w_10/products/does-not-exist.jpg");
     expect(res.status).toBe(404);
     const body = (await res.json()) as ErrorBody;
     expect(body.error).toBe("not_found");
   });
 
+  it("returns 404 when the asset is not ready", async () => {
+    const org = fakeDb.fake.seedOrg({ slug: "acme" });
+    fakeDb.fake.seedAsset({ orgId: org.id, publicId: "products/shoe.jpg", status: "pending" });
+
+    const res = await app.request("/acme/w_10/products/shoe.jpg");
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 404 when the original is missing from storage", async () => {
+    seedReadyAsset();
+
+    const res = await app.request("/acme/w_10/products/shoe.jpg");
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as ErrorBody;
+    expect(body.error).toBe("not_found");
+  });
+
+  it("only queries the database once per asset within the cache TTL", async () => {
+    const { asset } = seedReadyAsset();
+    fakeStorage.seed(asset.storageKey, fixture, "image/jpeg");
+    const findFirstSpy = vi.spyOn(fakeDb.db.query.assets, "findFirst");
+
+    await app.request("/acme/w_10/products/shoe.jpg");
+    await app.request("/acme/w_20/products/shoe.jpg");
+
+    expect(findFirstSpy).toHaveBeenCalledTimes(1);
+  });
+
   it("negotiates avif via the Accept header for f_auto", async () => {
-    fakeStorage.seed(ORIGINAL_KEY, fixture, "image/jpeg");
+    const { asset } = seedReadyAsset();
+    fakeStorage.seed(asset.storageKey, fixture, "image/jpeg");
 
     const res = await app.request("/acme/w_10/products/shoe.jpg", {
       headers: { accept: "image/avif,image/webp,*/*" },
@@ -119,7 +175,8 @@ describe("GET /:org/:transforms/:path", () => {
   });
 
   it("falls back to jpeg when the Accept header has no known image formats", async () => {
-    fakeStorage.seed(ORIGINAL_KEY, fixture, "image/jpeg");
+    const { asset } = seedReadyAsset();
+    fakeStorage.seed(asset.storageKey, fixture, "image/jpeg");
 
     const res = await app.request("/acme/w_10/products/shoe.jpg", {
       headers: { accept: "text/html" },
@@ -160,13 +217,12 @@ describe("GET /:org/:transforms/:path", () => {
     expect(body.error).toBe("bad_transform");
   });
 
-  describe("when signed URLs are required", () => {
-    beforeEach(() => {
-      process.env.DELIVERY_REQUIRE_SIGNED_URLS = "true";
-      process.env.DELIVERY_SIGNING_KEY = "test-signing-key";
-    });
+  describe("when the org requires signed URLs", () => {
+    const key = Buffer.from("test-signing-key");
 
     it("returns 401 when the signature is missing", async () => {
+      seedReadyAsset({ requiresSignedUrls: true, urlSignKey: key });
+
       const res = await app.request("/acme/w_800/products/shoe.jpg");
       expect(res.status).toBe(401);
       const body = (await res.json()) as ErrorBody;
@@ -174,13 +230,15 @@ describe("GET /:org/:transforms/:path", () => {
     });
 
     it("returns 401 when the signature is invalid", async () => {
+      seedReadyAsset({ requiresSignedUrls: true, urlSignKey: key });
+
       const res = await app.request("/acme/s_wrongsignature,w_800/products/shoe.jpg");
       expect(res.status).toBe(401);
     });
 
     it("returns 200 for a validly signed request", async () => {
-      fakeStorage.seed(ORIGINAL_KEY, fixture, "image/jpeg");
-      const key = Buffer.from("test-signing-key");
+      const { asset } = seedReadyAsset({ requiresSignedUrls: true, urlSignKey: key });
+      fakeStorage.seed(asset.storageKey, fixture, "image/jpeg");
       const rest = "w_10,f_jpg/products/shoe.jpg";
       const sig = sign(rest, key);
 

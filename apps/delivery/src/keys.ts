@@ -31,10 +31,11 @@ export function assertSafePublicId(publicId: string): void {
   assertSafeSegments(publicId);
 }
 
-export function originalKey(org: string, publicId: string): string {
-  return `orgs/${org}/orig/${publicId}`;
-}
-
-export function derivativeKey(org: string, publicId: string, t: Transform, ext: string): string {
-  return `orgs/${org}/deriv/${publicId}/${transformKey(t, ext)}`;
+// Built from the resolved org/asset IDs, not the raw URL segments — the URL's
+// :org is a customer-facing slug and :path is the customer-facing public id,
+// neither of which are the storage-key convention the API's upload flow uses
+// (`orgs/{orgId}/orig/{assetId}`). Deriving keys from IDs keeps delivery and
+// the API in permanent agreement instead of coincidentally matching.
+export function derivativeKey(orgId: string, assetId: string, t: Transform, ext: string): string {
+  return `orgs/${orgId}/deriv/${assetId}/${transformKey(t, ext)}`;
 }

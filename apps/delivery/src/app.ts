@@ -7,17 +7,12 @@ import {
 import { ObjectNotFoundError } from "@photon/storage";
 import { Hono } from "hono";
 import { ZodError } from "zod";
-import { getConfig } from "./config";
+import { AssetNotFoundError, AssetNotReadyError, OrgNotFoundError } from "./errors";
 import { resolveFormat } from "./format";
-import {
-  assertSafeOrg,
-  assertSafePublicId,
-  derivativeKey,
-  originalKey,
-  PathTraversalError,
-} from "./keys";
+import { assertSafeOrg, assertSafePublicId, derivativeKey, PathTraversalError } from "./keys";
 import { persistDerivative } from "./persist-derivative";
 import { renderDerivative, UnprocessableImageError } from "./render";
+import { resolveAsset } from "./resolve-asset";
 import { deliveryHeaders } from "./response";
 import { getStorageClient } from "./storage";
 import { streamToBuffer } from "./stream";
@@ -33,33 +28,27 @@ app.get("/:org/:transforms/:path{.+}", async (c) => {
   assertSafeOrg(org);
   assertSafePublicId(publicId);
 
-  const config = getConfig();
   const transform = parseTransforms(transforms);
-  if (config.requireSignedUrls) {
-    verifySignature(c.req.path, config.signingKey);
+  const { org: resolvedOrg, asset } = await resolveAsset(org, publicId);
+
+  if (resolvedOrg.requiresSignedUrls) {
+    verifySignature(c.req.path, resolvedOrg.urlSignKey);
   }
 
   const { ext, contentType, sharpFormat } = resolveFormat(transform, c.req.header("accept"));
   const storage = getStorageClient();
-  const derivKey = derivativeKey(org, publicId, transform, ext);
+  const derivKey = derivativeKey(resolvedOrg.id, asset.id, transform, ext);
 
   try {
     const cached = await storage.get(derivKey);
     const buffer = await streamToBuffer(cached.stream);
-    recordRequestUsage(org, { transformed: false, bytes: buffer.length });
+    recordRequestUsage(resolvedOrg.id, { transformed: false, bytes: buffer.length });
     return c.body(new Uint8Array(buffer), 200, deliveryHeaders(contentType, publicId));
   } catch (err) {
     if (!(err instanceof ObjectNotFoundError)) throw err;
   }
 
-  let original: Awaited<ReturnType<typeof storage.get>>;
-  try {
-    original = await storage.get(originalKey(org, publicId));
-  } catch (err) {
-    if (err instanceof ObjectNotFoundError) return c.notFound();
-    throw err;
-  }
-
+  const original = await storage.get(asset.storageKey);
   const originalBuffer = await streamToBuffer(original.stream);
   const buffer = await renderDerivative(originalBuffer, {
     transform,
@@ -68,7 +57,7 @@ app.get("/:org/:transforms/:path{.+}", async (c) => {
   });
 
   persistDerivative(storage, derivKey, buffer, contentType);
-  recordRequestUsage(org, { transformed: true, bytes: buffer.length });
+  recordRequestUsage(resolvedOrg.id, { transformed: true, bytes: buffer.length });
 
   return c.body(new Uint8Array(buffer), 200, deliveryHeaders(contentType, publicId));
 });
@@ -91,7 +80,12 @@ app.onError((err, c) => {
   if (err instanceof UnprocessableImageError) {
     return c.json({ error: "unprocessable_image", message: err.message }, 422);
   }
-  if (err instanceof ObjectNotFoundError) {
+  if (
+    err instanceof ObjectNotFoundError ||
+    err instanceof OrgNotFoundError ||
+    err instanceof AssetNotFoundError ||
+    err instanceof AssetNotReadyError
+  ) {
     return c.json({ error: "not_found" }, 404);
   }
   console.error(err);
