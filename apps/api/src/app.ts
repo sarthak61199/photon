@@ -1,5 +1,6 @@
-import { randomUUID } from "node:crypto";
-import { assets } from "@photon/db";
+import { randomBytes, randomUUID } from "node:crypto";
+import { assertPublicHttpUrl, SsrfError, TransformSchema } from "@photon/core";
+import { assets, transformPresets, webhooks } from "@photon/db";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { ZodError, z } from "zod";
@@ -8,14 +9,16 @@ import { getDbClient } from "./db";
 import {
   AssetNotFoundError,
   BadCursorError,
+  DuplicatePresetNameError,
   DuplicatePublicIdError,
   InsufficientScopeError,
   InvalidApiKeyError,
   InvalidUsageRangeError,
   isUniqueViolation,
   MissingApiKeyError,
+  RateLimitedError,
 } from "./errors";
-import { enqueueProcessAsset } from "./queue";
+import { enqueueFetchUrl, enqueueProcessAsset, enqueuePurgeAsset } from "./queue";
 import { getStorageClient } from "./storage";
 
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
@@ -48,6 +51,25 @@ const UpdateAssetSchema = z
 const UsageQuerySchema = z.object({
   from: z.string().optional(),
   to: z.string().optional(),
+});
+
+const CreateWebhookSchema = z.object({
+  url: z.string().min(1),
+  events: z.array(z.string()).min(1).optional(),
+});
+
+const CreatePresetSchema = z.object({
+  name: z.string().min(1).max(100),
+  params: TransformSchema,
+});
+
+const FetchAssetSchema = z.object({
+  publicId: z.string().min(1).max(512),
+  url: z.string().min(1),
+});
+
+const PurgeSchema = z.object({
+  publicId: z.string().min(1).max(512),
 });
 
 const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -134,6 +156,30 @@ app.post("/v1/uploads/complete", apiKeyAuth, requireScope("write"), async (c) =>
   await enqueueProcessAsset(assetId);
 
   return c.json({ assetId, status: row.status });
+});
+
+app.post("/v1/assets/fetch", apiKeyAuth, requireScope("write"), async (c) => {
+  const { publicId, url } = FetchAssetSchema.parse(await c.req.json());
+
+  // Validated up front so a malicious URL never even gets a pending asset row.
+  // apps/worker/src/fetch-url.ts re-validates on every redirect hop too.
+  await assertPublicHttpUrl(url);
+
+  const orgId = c.get("orgId");
+  const assetId = randomUUID();
+  const storageKey = `orgs/${orgId}/orig/${assetId}`;
+  const { db } = getDbClient();
+
+  try {
+    await db.insert(assets).values({ id: assetId, orgId, publicId, storageKey, status: "pending" });
+  } catch (err) {
+    if (isUniqueViolation(err)) throw new DuplicatePublicIdError(publicId);
+    throw err;
+  }
+
+  await enqueueFetchUrl(assetId, url);
+
+  return c.json({ assetId, storageKey, status: "pending" }, 201);
 });
 
 app.get("/v1/assets", apiKeyAuth, async (c) => {
@@ -225,7 +271,58 @@ app.delete("/v1/assets/:publicId", apiKeyAuth, requireScope("write"), async (c) 
     .returning();
 
   if (!row) throw new AssetNotFoundError(publicId);
+
+  await enqueuePurgeAsset(row.id);
+
   return c.body(null, 204);
+});
+
+app.post("/v1/presets", apiKeyAuth, requireScope("write"), async (c) => {
+  const { name, params } = CreatePresetSchema.parse(await c.req.json());
+  const orgId = c.get("orgId");
+  const { db } = getDbClient();
+
+  try {
+    const [row] = await db.insert(transformPresets).values({ orgId, name, params }).returning();
+    if (!row) throw new Error("failed to insert preset");
+    return c.json(row, 201);
+  } catch (err) {
+    if (isUniqueViolation(err)) throw new DuplicatePresetNameError(name);
+    throw err;
+  }
+});
+
+app.post("/v1/purge", apiKeyAuth, requireScope("write"), async (c) => {
+  const { publicId } = PurgeSchema.parse(await c.req.json());
+  const orgId = c.get("orgId");
+  const { db } = getDbClient();
+
+  // Deliberately not filtered by isNull(deletedAt) — purging a soft-deleted
+  // asset's leftover storage is exactly the case DELETE already enqueues,
+  // and this endpoint lets it be retried/re-triggered directly too.
+  const asset = await db.query.assets.findFirst({
+    where: (a, { eq, and }) => and(eq(a.orgId, orgId), eq(a.publicId, publicId)),
+  });
+  if (!asset) throw new AssetNotFoundError(publicId);
+
+  await enqueuePurgeAsset(asset.id);
+
+  return c.json({ assetId: asset.id, status: "purge_queued" }, 202);
+});
+
+app.post("/v1/webhooks", apiKeyAuth, requireScope("write"), async (c) => {
+  const { url, events } = CreateWebhookSchema.parse(await c.req.json());
+  const orgId = c.get("orgId");
+  const secret = randomBytes(32).toString("hex");
+  const { db } = getDbClient();
+
+  const [row] = await db
+    .insert(webhooks)
+    .values({ orgId, url, secret, ...(events ? { events } : {}) })
+    .returning();
+  if (!row) throw new Error("failed to insert webhook");
+
+  return c.json(row, 201);
 });
 
 app.get("/v1/usage", apiKeyAuth, async (c) => {
@@ -271,8 +368,17 @@ app.onError((err, c) => {
   if (err instanceof InsufficientScopeError) {
     return c.json({ error: "insufficient_scope", message: err.message }, 403);
   }
+  if (err instanceof RateLimitedError) {
+    return c.json({ error: "rate_limited", message: err.message }, 429);
+  }
   if (err instanceof DuplicatePublicIdError) {
     return c.json({ error: "duplicate_public_id", message: err.message }, 409);
+  }
+  if (err instanceof DuplicatePresetNameError) {
+    return c.json({ error: "duplicate_preset_name", message: err.message }, 409);
+  }
+  if (err instanceof SsrfError) {
+    return c.json({ error: "unsafe_url", message: err.message }, 400);
   }
   if (err instanceof AssetNotFoundError) return c.json({ error: "not_found" }, 404);
   if (err instanceof BadCursorError) return c.json({ error: "bad_cursor" }, 400);

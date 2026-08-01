@@ -8,9 +8,11 @@ import type {
   NewOrg,
   NewUsageDaily,
   Org,
+  TransformPreset,
   UsageDaily,
+  Webhook,
 } from "@photon/db";
-import { apiKeys, assets, orgs } from "@photon/db";
+import { apiKeys, assets, orgs, transformPresets, webhooks } from "@photon/db";
 import { is, Param, type SQL } from "drizzle-orm";
 
 type Row = Record<string, unknown>;
@@ -208,6 +210,8 @@ export interface FakeDb {
   seedAsset(asset: Partial<NewAsset> & { orgId: string; publicId: string }): Asset;
   getAsset(id: string): Asset | undefined;
   seedUsageDaily(row: Partial<NewUsageDaily> & { orgId: string; day: string }): UsageDaily;
+  getWebhooks(): Webhook[];
+  getTransformPresets(): TransformPreset[];
   clear(): void;
 }
 
@@ -216,6 +220,8 @@ export function createFakeDbClient(): DbClient & { fake: FakeDb } {
   const apiKeysStore = new Map<string, ApiKey>();
   const assetsStore = new Map<string, Asset>();
   const usageDailyStore = new Map<string, UsageDaily>();
+  const webhooksStore = new Map<string, Webhook>();
+  const transformPresetsStore = new Map<string, TransformPreset>();
 
   const fake: FakeDb = {
     seedOrg(org) {
@@ -226,6 +232,7 @@ export function createFakeDbClient(): DbClient & { fake: FakeDb } {
         name: org.name ?? "Test Org",
         plan: org.plan ?? "free",
         urlSignKey: org.urlSignKey ?? Buffer.from("test-signing-key"),
+        requiresSignedUrls: org.requiresSignedUrls ?? false,
         settings: org.settings ?? {},
         createdAt: org.createdAt ?? new Date(),
       };
@@ -284,11 +291,19 @@ export function createFakeDbClient(): DbClient & { fake: FakeDb } {
       usageDailyStore.set(`${full.orgId}|${full.day}`, full);
       return full;
     },
+    getWebhooks() {
+      return [...webhooksStore.values()];
+    },
+    getTransformPresets() {
+      return [...transformPresetsStore.values()];
+    },
     clear() {
       orgsStore.clear();
       apiKeysStore.clear();
       assetsStore.clear();
       usageDailyStore.clear();
+      webhooksStore.clear();
+      transformPresetsStore.clear();
     },
   };
 
@@ -318,6 +333,14 @@ export function createFakeDbClient(): DbClient & { fake: FakeDb } {
       }
       if (table === apiKeys) return createInsertBuilder(apiKeysStore);
       if (table === orgs) return createInsertBuilder(orgsStore);
+      if (table === webhooks) {
+        return createInsertBuilder(webhooksStore, {
+          defaults: { events: ["asset.ready", "asset.failed"] },
+        });
+      }
+      if (table === transformPresets) {
+        return createInsertBuilder(transformPresetsStore, { uniqueOn: ["orgId", "name"] });
+      }
       throw new Error("fake db: unsupported insert table");
     },
     update(table: unknown) {

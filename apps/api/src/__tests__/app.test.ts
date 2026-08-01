@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import type { ApiKey, Org } from "@photon/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { app } from "../app";
+import { resetRateLimiter } from "../auth";
 import { fakeDbClient } from "./fake-db";
 import { fakeQueue } from "./fake-queue";
 import { fakeStorage } from "./fake-storage";
@@ -9,8 +10,8 @@ import { fakeStorage } from "./fake-storage";
 vi.mock("../db", () => ({ getDbClient: () => fakeDbClient }));
 vi.mock("../storage", () => ({ getStorageClient: () => fakeStorage }));
 vi.mock("../queue", async () => {
-  const { enqueueProcessAsset } = await import("./fake-queue");
-  return { enqueueProcessAsset };
+  const { enqueueFetchUrl, enqueueProcessAsset, enqueuePurgeAsset } = await import("./fake-queue");
+  return { enqueueFetchUrl, enqueueProcessAsset, enqueuePurgeAsset };
 });
 
 interface ErrorBody {
@@ -45,6 +46,7 @@ beforeEach(() => {
   fakeDbClient.fake.clear();
   fakeStorage.clear();
   fakeQueue.clear();
+  resetRateLimiter();
 });
 
 describe("GET /healthz", () => {
@@ -83,6 +85,30 @@ describe("auth", () => {
     });
     expect(res.status).toBe(403);
     expect(((await res.json()) as ErrorBody).error).toBe("insufficient_scope");
+  });
+
+  it("returns 429 once an org exhausts its request budget", async () => {
+    const { rawKey } = seedOrgWithKey();
+
+    for (let i = 0; i < 100; i++) {
+      await app.request("/v1/assets", { headers: authHeaders(rawKey) });
+    }
+
+    const res = await app.request("/v1/assets", { headers: authHeaders(rawKey) });
+    expect(res.status).toBe(429);
+    expect(((await res.json()) as ErrorBody).error).toBe("rate_limited");
+  });
+
+  it("does not rate-limit a different org", async () => {
+    const exhausted = seedOrgWithKey();
+    const other = seedOrgWithKey();
+
+    for (let i = 0; i < 100; i++) {
+      await app.request("/v1/assets", { headers: authHeaders(exhausted.rawKey) });
+    }
+
+    const res = await app.request("/v1/assets", { headers: authHeaders(other.rawKey) });
+    expect(res.status).toBe(200);
   });
 });
 
@@ -185,6 +211,57 @@ describe("POST /v1/uploads/complete", () => {
       body: JSON.stringify({ assetId: asset.id }),
     });
     expect(res.status).toBe(404);
+  });
+});
+
+describe("POST /v1/assets/fetch", () => {
+  it("creates a pending asset and enqueues a fetch-url job", async () => {
+    const { org, rawKey } = seedOrgWithKey();
+
+    const res = await app.request("/v1/assets/fetch", {
+      method: "POST",
+      headers: { ...authHeaders(rawKey), "content-type": "application/json" },
+      body: JSON.stringify({ publicId: "products/shoe", url: "http://93.184.216.34/shoe.jpg" }),
+    });
+
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { assetId: string; storageKey: string; status: string };
+    expect(body.status).toBe("pending");
+    expect(body.storageKey).toBe(`orgs/${org.id}/orig/${body.assetId}`);
+
+    const asset = fakeDbClient.fake.getAsset(body.assetId);
+    expect(asset?.status).toBe("pending");
+    expect(fakeQueue.sent).toEqual([
+      { name: "fetch-url", data: { assetId: body.assetId, url: "http://93.184.216.34/shoe.jpg" } },
+    ]);
+  });
+
+  it("rejects a URL that resolves to a private address, without creating an asset", async () => {
+    const { rawKey } = seedOrgWithKey();
+
+    const res = await app.request("/v1/assets/fetch", {
+      method: "POST",
+      headers: { ...authHeaders(rawKey), "content-type": "application/json" },
+      body: JSON.stringify({ publicId: "products/shoe", url: "http://127.0.0.1/admin" }),
+    });
+
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as ErrorBody).error).toBe("unsafe_url");
+    expect(fakeQueue.sent).toEqual([]);
+  });
+
+  it("returns 409 for a duplicate publicId", async () => {
+    const { org, rawKey } = seedOrgWithKey();
+    fakeDbClient.fake.seedAsset({ orgId: org.id, publicId: "products/shoe" });
+
+    const res = await app.request("/v1/assets/fetch", {
+      method: "POST",
+      headers: { ...authHeaders(rawKey), "content-type": "application/json" },
+      body: JSON.stringify({ publicId: "products/shoe", url: "http://93.184.216.34/shoe.jpg" }),
+    });
+
+    expect(res.status).toBe(409);
+    expect(((await res.json()) as ErrorBody).error).toBe("duplicate_public_id");
   });
 });
 
@@ -347,9 +424,9 @@ describe("PATCH /v1/assets/:publicId", () => {
 });
 
 describe("DELETE /v1/assets/:publicId", () => {
-  it("soft-deletes the asset", async () => {
+  it("soft-deletes the asset and enqueues a purge job", async () => {
     const { org, rawKey } = seedOrgWithKey();
-    fakeDbClient.fake.seedAsset({ orgId: org.id, publicId: "shoe" });
+    const asset = fakeDbClient.fake.seedAsset({ orgId: org.id, publicId: "shoe" });
 
     const res = await app.request("/v1/assets/shoe", {
       method: "DELETE",
@@ -359,6 +436,7 @@ describe("DELETE /v1/assets/:publicId", () => {
 
     const again = await app.request("/v1/assets/shoe", { headers: authHeaders(rawKey) });
     expect(again.status).toBe(404);
+    expect(fakeQueue.sent).toEqual([{ name: "purge-asset", data: { assetId: asset.id } }]);
   });
 
   it("returns 404 when deleting an already-deleted asset", async () => {
@@ -371,6 +449,151 @@ describe("DELETE /v1/assets/:publicId", () => {
       headers: authHeaders(rawKey),
     });
     expect(second.status).toBe(404);
+  });
+});
+
+describe("POST /v1/presets", () => {
+  it("creates a preset with defaulted transform params", async () => {
+    const { rawKey } = seedOrgWithKey();
+
+    const res = await app.request("/v1/presets", {
+      method: "POST",
+      headers: { ...authHeaders(rawKey), "content-type": "application/json" },
+      body: JSON.stringify({ name: "thumbnail", params: { w: 300, h: 300, c: "fill" } }),
+    });
+
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { name: string; params: Record<string, unknown> };
+    expect(body.name).toBe("thumbnail");
+    expect(body.params).toMatchObject({ w: 300, h: 300, c: "fill", f: "auto", dpr: 1 });
+  });
+
+  it("returns 409 for a duplicate preset name in the same org", async () => {
+    const { rawKey } = seedOrgWithKey();
+    const create = () =>
+      app.request("/v1/presets", {
+        method: "POST",
+        headers: { ...authHeaders(rawKey), "content-type": "application/json" },
+        body: JSON.stringify({ name: "thumbnail", params: { w: 300 } }),
+      });
+
+    expect((await create()).status).toBe(201);
+    const second = await create();
+    expect(second.status).toBe(409);
+    expect(((await second.json()) as ErrorBody).error).toBe("duplicate_preset_name");
+  });
+
+  it("returns 400 for out-of-range transform params", async () => {
+    const { rawKey } = seedOrgWithKey();
+
+    const res = await app.request("/v1/presets", {
+      method: "POST",
+      headers: { ...authHeaders(rawKey), "content-type": "application/json" },
+      body: JSON.stringify({ name: "huge", params: { w: 99999 } }),
+    });
+
+    expect(res.status).toBe(400);
+  });
+});
+
+describe("POST /v1/purge", () => {
+  it("enqueues a purge job for an existing asset", async () => {
+    const { org, rawKey } = seedOrgWithKey();
+    const asset = fakeDbClient.fake.seedAsset({ orgId: org.id, publicId: "shoe" });
+
+    const res = await app.request("/v1/purge", {
+      method: "POST",
+      headers: { ...authHeaders(rawKey), "content-type": "application/json" },
+      body: JSON.stringify({ publicId: "shoe" }),
+    });
+
+    expect(res.status).toBe(202);
+    expect(await res.json()).toEqual({ assetId: asset.id, status: "purge_queued" });
+    expect(fakeQueue.sent).toEqual([{ name: "purge-asset", data: { assetId: asset.id } }]);
+  });
+
+  it("still purges an already soft-deleted asset", async () => {
+    const { org, rawKey } = seedOrgWithKey();
+    const asset = fakeDbClient.fake.seedAsset({
+      orgId: org.id,
+      publicId: "shoe",
+      deletedAt: new Date(),
+    });
+
+    const res = await app.request("/v1/purge", {
+      method: "POST",
+      headers: { ...authHeaders(rawKey), "content-type": "application/json" },
+      body: JSON.stringify({ publicId: "shoe" }),
+    });
+
+    expect(res.status).toBe(202);
+    expect(fakeQueue.sent).toEqual([{ name: "purge-asset", data: { assetId: asset.id } }]);
+  });
+
+  it("returns 404 for an unknown asset", async () => {
+    const { rawKey } = seedOrgWithKey();
+
+    const res = await app.request("/v1/purge", {
+      method: "POST",
+      headers: { ...authHeaders(rawKey), "content-type": "application/json" },
+      body: JSON.stringify({ publicId: "does-not-exist" }),
+    });
+
+    expect(res.status).toBe(404);
+  });
+});
+
+describe("POST /v1/webhooks", () => {
+  it("creates a webhook with a generated secret shown once", async () => {
+    const { org, rawKey } = seedOrgWithKey();
+
+    const res = await app.request("/v1/webhooks", {
+      method: "POST",
+      headers: { ...authHeaders(rawKey), "content-type": "application/json" },
+      body: JSON.stringify({ url: "https://example.com/hook" }),
+    });
+
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as {
+      id: string;
+      orgId: string;
+      url: string;
+      secret: string;
+      events: string[];
+    };
+    expect(body.orgId).toBe(org.id);
+    expect(body.url).toBe("https://example.com/hook");
+    expect(body.secret).toMatch(/^[0-9a-f]{64}$/);
+    expect(body.events).toEqual(["asset.ready", "asset.failed"]);
+
+    const stored = fakeDbClient.fake.getWebhooks();
+    expect(stored).toHaveLength(1);
+  });
+
+  it("accepts a custom events list", async () => {
+    const { rawKey } = seedOrgWithKey();
+
+    const res = await app.request("/v1/webhooks", {
+      method: "POST",
+      headers: { ...authHeaders(rawKey), "content-type": "application/json" },
+      body: JSON.stringify({ url: "https://example.com/hook", events: ["asset.failed"] }),
+    });
+
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { events: string[] };
+    expect(body.events).toEqual(["asset.failed"]);
+  });
+
+  it("returns 400 for an empty events array", async () => {
+    const { rawKey } = seedOrgWithKey();
+
+    const res = await app.request("/v1/webhooks", {
+      method: "POST",
+      headers: { ...authHeaders(rawKey), "content-type": "application/json" },
+      body: JSON.stringify({ url: "https://example.com/hook", events: [] }),
+    });
+
+    expect(res.status).toBe(400);
   });
 });
 

@@ -18,3 +18,11 @@ export const fakeQueue: FakeQueue = {
 export async function enqueueProcessAsset(assetId: string): Promise<void> {
   fakeQueue.sent.push({ name: "process-asset", data: { assetId } });
 }
+
+export async function enqueueFetchUrl(assetId: string, url: string): Promise<void> {
+  fakeQueue.sent.push({ name: "fetch-url", data: { assetId, url } });
+}
+
+export async function enqueuePurgeAsset(assetId: string): Promise<void> {
+  fakeQueue.sent.push({ name: "purge-asset", data: { assetId } });
+}

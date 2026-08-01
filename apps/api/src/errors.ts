@@ -19,6 +19,13 @@ export class InsufficientScopeError extends Error {
   }
 }
 
+export class RateLimitedError extends Error {
+  constructor() {
+    super("Rate limit exceeded");
+    this.name = "RateLimitedError";
+  }
+}
+
 export class AssetNotFoundError extends Error {
   constructor(publicId: string) {
     super(`Asset not found: "${publicId}"`);
@@ -30,6 +37,13 @@ export class DuplicatePublicIdError extends Error {
   constructor(publicId: string) {
     super(`An asset with publicId "${publicId}" already exists`);
     this.name = "DuplicatePublicIdError";
+  }
+}
+
+export class DuplicatePresetNameError extends Error {
+  constructor(name: string) {
+    super(`A preset named "${name}" already exists`);
+    this.name = "DuplicatePresetNameError";
   }
 }
 

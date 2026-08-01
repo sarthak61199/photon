@@ -29,6 +29,9 @@ export function createFakeStorage(): FakeStorage {
     async put() {
       throw new Error("not implemented in fake storage");
     },
+    async delete() {
+      throw new Error("not implemented in fake storage");
+    },
     async presignPut(): Promise<string> {
       throw new Error("not implemented in fake storage");
     },
