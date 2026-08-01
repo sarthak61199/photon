@@ -5,7 +5,7 @@ import sharp from "sharp";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const assetsStore = new Map<string, Asset>();
-const deliverEvent = vi.fn().mockResolvedValue(undefined);
+const enqueueWebhookEvent = vi.fn().mockResolvedValue(undefined);
 
 function baseAsset(overrides: Partial<Asset> = {}): Asset {
   return {
@@ -74,13 +74,13 @@ vi.mock("../storage", () => ({
     },
   }),
 }));
-vi.mock("../webhooks", () => ({ deliverEvent }));
+vi.mock("../webhooks", () => ({ enqueueWebhookEvent }));
 
 const { processAsset } = await import("../process-asset");
 
 beforeEach(() => {
   assetsStore.clear();
-  deliverEvent.mockClear();
+  enqueueWebhookEvent.mockClear();
   storageObject = undefined;
 });
 
@@ -102,7 +102,7 @@ describe("processAsset", () => {
     expect(updated?.width).toBe(4);
     expect(updated?.height).toBe(2);
     expect(updated?.checksum).toBeTruthy();
-    expect(deliverEvent).toHaveBeenCalledWith(
+    expect(enqueueWebhookEvent).toHaveBeenCalledWith(
       fakeDb,
       "org_1",
       "asset.ready",
@@ -119,7 +119,7 @@ describe("processAsset", () => {
 
     const updated = assetsStore.get(asset.id);
     expect(updated?.status).toBe("failed");
-    expect(deliverEvent).toHaveBeenCalledWith(
+    expect(enqueueWebhookEvent).toHaveBeenCalledWith(
       fakeDb,
       "org_1",
       "asset.failed",
@@ -129,6 +129,6 @@ describe("processAsset", () => {
 
   it("is a no-op when the asset does not exist", async () => {
     await processAsset({ data: { assetId: "missing" } });
-    expect(deliverEvent).not.toHaveBeenCalled();
+    expect(enqueueWebhookEvent).not.toHaveBeenCalled();
   });
 });

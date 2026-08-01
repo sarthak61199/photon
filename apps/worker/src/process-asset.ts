@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import sharp from "sharp";
 import { getDbClient } from "./db";
 import { getStorageClient } from "./storage";
-import { deliverEvent } from "./webhooks";
+import { enqueueWebhookEvent } from "./webhooks";
 
 const MAX_INPUT_PIXELS = 268_402_689; // ~16k x 16k, sharp's own decompression-bomb default, set explicitly
 
@@ -48,7 +48,7 @@ export async function processAsset(job: ProcessAssetJob): Promise<void> {
       })
       .where(eq(assets.id, assetId));
 
-    await deliverEvent(getDbClient(), asset.orgId, "asset.ready", {
+    await enqueueWebhookEvent(getDbClient(), asset.orgId, "asset.ready", {
       assetId: asset.id,
       publicId: asset.publicId,
       status: "ready",
@@ -61,7 +61,7 @@ export async function processAsset(job: ProcessAssetJob): Promise<void> {
 
     await db.update(assets).set({ status: "failed" }).where(eq(assets.id, assetId));
 
-    await deliverEvent(getDbClient(), asset.orgId, "asset.failed", {
+    await enqueueWebhookEvent(getDbClient(), asset.orgId, "asset.failed", {
       assetId: asset.id,
       publicId: asset.publicId,
       status: "failed",
