@@ -62,5 +62,8 @@ export class InvalidUsageRangeError extends Error {
 }
 
 export function isUniqueViolation(err: unknown): boolean {
-  return typeof err === "object" && err !== null && "code" in err && err.code === "23505";
+  if (typeof err !== "object" || err === null) return false;
+  if ("code" in err && err.code === "23505") return true;
+  if ("cause" in err) return isUniqueViolation(err.cause);
+  return false;
 }
