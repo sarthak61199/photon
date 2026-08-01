@@ -1,9 +1,10 @@
 import { parseTransforms, sign } from "@photon/core";
 import sharp from "sharp";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { app } from "../app";
+import { app, resetRateLimiter } from "../app";
 import { derivativeKey } from "../keys";
 import { resetAssetCache } from "../resolve-asset";
+import { resetPresetCache } from "../resolve-preset";
 import { createFakeDbClient } from "./fake-db";
 import { fakeStorage } from "./fake-storage";
 import { createFixtureJpeg } from "./fixtures";
@@ -54,6 +55,8 @@ describe("GET /:org/:transforms/:path", () => {
     fakeStorage.clear();
     fakeDb.fake.clear();
     resetAssetCache();
+    resetPresetCache();
+    resetRateLimiter();
     recordRequestUsage.mockClear();
   });
 
@@ -220,6 +223,54 @@ describe("GET /:org/:transforms/:path", () => {
     expect(res.status).toBe(400);
     const body = (await res.json()) as ErrorBody;
     expect(body.error).toBe("bad_transform");
+  });
+
+  describe("t_name preset segment", () => {
+    it("renders using the preset's stored params", async () => {
+      const { org, asset } = seedReadyAsset();
+      fakeDb.fake.seedPreset({ orgId: org.id, name: "thumb", params: { w: 20, h: 10, c: "fill" } });
+      fakeStorage.seed(asset.storageKey, fixture, "image/jpeg");
+
+      const res = await app.request("/acme/t_thumb/products/shoe.jpg");
+
+      expect(res.status).toBe(200);
+      const buf = Buffer.from(await res.arrayBuffer());
+      const meta = await sharp(buf).metadata();
+      expect(meta.width).toBe(20);
+      expect(meta.height).toBe(10);
+    });
+
+    it("returns 404 for an unknown preset name", async () => {
+      seedReadyAsset();
+
+      const res = await app.request("/acme/t_does-not-exist/products/shoe.jpg");
+      expect(res.status).toBe(404);
+      const body = (await res.json()) as ErrorBody;
+      expect(body.error).toBe("not_found");
+    });
+  });
+
+  describe("rate limiting", () => {
+    it("returns 429 once an org exhausts its request budget", async () => {
+      // Rate limiting runs before any org/asset lookup, so the org need not exist.
+      for (let i = 0; i < 100; i++) {
+        await app.request("/acme/w_1/products/does-not-exist.jpg");
+      }
+
+      const res = await app.request("/acme/w_1/products/does-not-exist.jpg");
+      expect(res.status).toBe(429);
+      const body = (await res.json()) as ErrorBody;
+      expect(body.error).toBe("rate_limited");
+    });
+
+    it("does not rate-limit a different org", async () => {
+      for (let i = 0; i < 101; i++) {
+        await app.request("/acme/w_1/products/does-not-exist.jpg");
+      }
+
+      const res = await app.request("/other-org/w_1/products/does-not-exist.jpg");
+      expect(res.status).not.toBe(429);
+    });
   });
 
   describe("when the org requires signed URLs", () => {

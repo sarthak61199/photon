@@ -18,3 +18,10 @@ export class AssetNotReadyError extends Error {
     this.name = "AssetNotReadyError";
   }
 }
+
+export class PresetNotFoundError extends Error {
+  constructor(name: string) {
+    super(`Preset not found: "${name}"`);
+    this.name = "PresetNotFoundError";
+  }
+}

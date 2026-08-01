@@ -1,5 +1,15 @@
 import { randomUUID } from "node:crypto";
-import type { Asset, DbClient, Derivative, NewAsset, NewDerivative, NewOrg, Org } from "@photon/db";
+import type {
+  Asset,
+  DbClient,
+  Derivative,
+  NewAsset,
+  NewDerivative,
+  NewOrg,
+  NewTransformPreset,
+  Org,
+  TransformPreset,
+} from "@photon/db";
 import { derivatives } from "@photon/db";
 
 type Row = Record<string, unknown>;
@@ -46,6 +56,13 @@ function createRelationalQuery<T extends Row>(store: Map<string, T>) {
 export interface FakeDb {
   seedOrg(org: Partial<NewOrg> & { id?: string; slug: string }): Org;
   seedAsset(asset: Partial<NewAsset> & { orgId: string; publicId: string }): Asset;
+  seedPreset(
+    preset: Partial<NewTransformPreset> & {
+      orgId: string;
+      name: string;
+      params: Record<string, unknown>;
+    },
+  ): TransformPreset;
   listDerivatives(): Derivative[];
   clear(): void;
 }
@@ -54,6 +71,7 @@ export function createFakeDbClient(): DbClient & { fake: FakeDb } {
   const orgsStore = new Map<string, Org>();
   const assetsStore = new Map<string, Asset>();
   const derivativesStore = new Map<string, Derivative>();
+  const transformPresetsStore = new Map<string, TransformPreset>();
 
   const fake: FakeDb = {
     seedOrg(org) {
@@ -92,6 +110,17 @@ export function createFakeDbClient(): DbClient & { fake: FakeDb } {
       assetsStore.set(id, full);
       return full;
     },
+    seedPreset(preset) {
+      const id = preset.id ?? randomUUID();
+      const full: TransformPreset = {
+        id,
+        orgId: preset.orgId,
+        name: preset.name,
+        params: preset.params,
+      };
+      transformPresetsStore.set(id, full);
+      return full;
+    },
     listDerivatives() {
       return [...derivativesStore.values()];
     },
@@ -99,12 +128,14 @@ export function createFakeDbClient(): DbClient & { fake: FakeDb } {
       orgsStore.clear();
       assetsStore.clear();
       derivativesStore.clear();
+      transformPresetsStore.clear();
     },
   };
 
   const query = {
     orgs: createRelationalQuery(orgsStore),
     assets: createRelationalQuery(assetsStore),
+    transformPresets: createRelationalQuery(transformPresetsStore),
   };
 
   function insert(table: unknown) {
