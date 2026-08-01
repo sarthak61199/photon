@@ -40,6 +40,13 @@ export class BadCursorError extends Error {
   }
 }
 
+export class InvalidUsageRangeError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InvalidUsageRangeError";
+  }
+}
+
 export function isUniqueViolation(err: unknown): boolean {
   return typeof err === "object" && err !== null && "code" in err && err.code === "23505";
 }

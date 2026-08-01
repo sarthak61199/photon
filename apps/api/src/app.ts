@@ -11,6 +11,7 @@ import {
   DuplicatePublicIdError,
   InsufficientScopeError,
   InvalidApiKeyError,
+  InvalidUsageRangeError,
   isUniqueViolation,
   MissingApiKeyError,
 } from "./errors";
@@ -43,6 +44,35 @@ const UpdateAssetSchema = z
   .refine((v) => v.tags !== undefined || v.metadata !== undefined, {
     message: "at least one of tags or metadata must be provided",
   });
+
+const UsageQuerySchema = z.object({
+  from: z.string().optional(),
+  to: z.string().optional(),
+});
+
+const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const MAX_USAGE_RANGE_DAYS = 366;
+const DEFAULT_USAGE_RANGE_DAYS = 30;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+function parseDay(value: string): Date {
+  if (!DAY_PATTERN.test(value)) {
+    throw new InvalidUsageRangeError(`invalid date "${value}": expected YYYY-MM-DD`);
+  }
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) {
+    throw new InvalidUsageRangeError(`invalid date "${value}": expected YYYY-MM-DD`);
+  }
+  return date;
+}
+
+function formatDay(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function addDays(date: Date, days: number): Date {
+  return new Date(date.getTime() + days * MS_PER_DAY);
+}
 
 interface AssetCursor {
   createdAt: Date;
@@ -198,6 +228,41 @@ app.delete("/v1/assets/:publicId", apiKeyAuth, requireScope("write"), async (c) 
   return c.body(null, 204);
 });
 
+app.get("/v1/usage", apiKeyAuth, async (c) => {
+  const { from, to } = UsageQuerySchema.parse(c.req.query());
+  const orgId = c.get("orgId");
+  const { db } = getDbClient();
+
+  const toDate = to ? parseDay(to) : parseDay(formatDay(new Date()));
+  const fromDate = from ? parseDay(from) : addDays(toDate, -(DEFAULT_USAGE_RANGE_DAYS - 1));
+
+  if (fromDate > toDate) {
+    throw new InvalidUsageRangeError("from must be <= to");
+  }
+  const rangeDays = Math.round((toDate.getTime() - fromDate.getTime()) / MS_PER_DAY) + 1;
+  if (rangeDays > MAX_USAGE_RANGE_DAYS) {
+    throw new InvalidUsageRangeError(`range exceeds ${MAX_USAGE_RANGE_DAYS} days`);
+  }
+
+  const rows = await db.query.usageDaily.findMany({
+    where: (u, { eq, and, gte, lte }) =>
+      and(eq(u.orgId, orgId), gte(u.day, formatDay(fromDate)), lte(u.day, formatDay(toDate))),
+    orderBy: (u, { asc }) => [asc(u.day)],
+  });
+
+  const totals = rows.reduce(
+    (acc, r) => ({
+      requests: acc.requests + r.requests,
+      transforms: acc.transforms + r.transforms,
+      bandwidth: acc.bandwidth + r.bandwidth,
+      storage: acc.storage + r.storage,
+    }),
+    { requests: 0, transforms: 0, bandwidth: 0, storage: 0 },
+  );
+
+  return c.json({ from: formatDay(fromDate), to: formatDay(toDate), usage: rows, totals });
+});
+
 app.notFound((c) => c.json({ error: "not_found" }, 404));
 
 app.onError((err, c) => {
@@ -211,6 +276,9 @@ app.onError((err, c) => {
   }
   if (err instanceof AssetNotFoundError) return c.json({ error: "not_found" }, 404);
   if (err instanceof BadCursorError) return c.json({ error: "bad_cursor" }, 400);
+  if (err instanceof InvalidUsageRangeError) {
+    return c.json({ error: "invalid_usage_range", message: err.message }, 400);
+  }
   if (err instanceof ZodError) {
     return c.json({ error: "bad_request", message: "invalid request parameters" }, 400);
   }

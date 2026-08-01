@@ -373,3 +373,85 @@ describe("DELETE /v1/assets/:publicId", () => {
     expect(second.status).toBe(404);
   });
 });
+
+describe("GET /v1/usage", () => {
+  it("defaults to the last 30 days ending today when no params given", async () => {
+    const { org, rawKey } = seedOrgWithKey();
+    fakeDbClient.fake.seedUsageDaily({ orgId: org.id, day: "2020-01-01", requests: 999 });
+
+    const res = await app.request("/v1/usage", { headers: authHeaders(rawKey) });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { from: string; to: string; usage: unknown[] };
+    // 2020-01-01 is far outside any "last 30 days" window, so it must not appear.
+    expect(body.usage).toEqual([]);
+    expect(new Date(body.to).getTime()).toBeGreaterThanOrEqual(new Date(body.from).getTime());
+  });
+
+  it("returns rows within an explicit range, ordered, with totals", async () => {
+    const { org, rawKey } = seedOrgWithKey();
+    fakeDbClient.fake.seedUsageDaily({
+      orgId: org.id,
+      day: "2026-08-02",
+      requests: 5,
+      transforms: 2,
+      bandwidth: 1000,
+      storage: 10,
+    });
+    fakeDbClient.fake.seedUsageDaily({
+      orgId: org.id,
+      day: "2026-08-01",
+      requests: 3,
+      transforms: 1,
+      bandwidth: 500,
+      storage: 5,
+    });
+
+    const res = await app.request("/v1/usage?from=2026-08-01&to=2026-08-02", {
+      headers: authHeaders(rawKey),
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      usage: { day: string }[];
+      totals: { requests: number; transforms: number; bandwidth: number; storage: number };
+    };
+    expect(body.usage.map((r) => r.day)).toEqual(["2026-08-01", "2026-08-02"]);
+    expect(body.totals).toEqual({ requests: 8, transforms: 3, bandwidth: 1500, storage: 15 });
+  });
+
+  it("returns 400 when from is after to", async () => {
+    const { rawKey } = seedOrgWithKey();
+    const res = await app.request("/v1/usage?from=2026-08-02&to=2026-08-01", {
+      headers: authHeaders(rawKey),
+    });
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as ErrorBody).error).toBe("invalid_usage_range");
+  });
+
+  it("returns 400 for a malformed date", async () => {
+    const { rawKey } = seedOrgWithKey();
+    const res = await app.request("/v1/usage?from=not-a-date", { headers: authHeaders(rawKey) });
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as ErrorBody).error).toBe("invalid_usage_range");
+  });
+
+  it("returns 400 when the range exceeds the cap", async () => {
+    const { rawKey } = seedOrgWithKey();
+    const res = await app.request("/v1/usage?from=2020-01-01&to=2026-08-02", {
+      headers: authHeaders(rawKey),
+    });
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as ErrorBody).error).toBe("invalid_usage_range");
+  });
+
+  it("never leaks another org's usage rows", async () => {
+    const mine = seedOrgWithKey();
+    const other = seedOrgWithKey();
+    fakeDbClient.fake.seedUsageDaily({ orgId: other.org.id, day: "2026-08-02", requests: 42 });
+
+    const res = await app.request("/v1/usage?from=2026-08-01&to=2026-08-02", {
+      headers: authHeaders(mine.rawKey),
+    });
+    const body = (await res.json()) as { usage: unknown[] };
+    expect(body.usage).toEqual([]);
+  });
+});

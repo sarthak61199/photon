@@ -1,5 +1,15 @@
 import { randomUUID } from "node:crypto";
-import type { ApiKey, Asset, DbClient, NewApiKey, NewAsset, NewOrg, Org } from "@photon/db";
+import type {
+  ApiKey,
+  Asset,
+  DbClient,
+  NewApiKey,
+  NewAsset,
+  NewOrg,
+  NewUsageDaily,
+  Org,
+  UsageDaily,
+} from "@photon/db";
 import { apiKeys, assets, orgs } from "@photon/db";
 import { is, Param, type SQL } from "drizzle-orm";
 
@@ -54,6 +64,18 @@ function makeWhereOperators<T extends Row>() {
       (row) => {
         const a = row[field];
         return a != null && (a as never) < (val as never);
+      },
+    gte:
+      (field: keyof T, val: unknown): Predicate<T> =>
+      (row) => {
+        const a = row[field];
+        return a != null && (a as never) >= (val as never);
+      },
+    lte:
+      (field: keyof T, val: unknown): Predicate<T> =>
+      (row) => {
+        const a = row[field];
+        return a != null && (a as never) <= (val as never);
       },
     // Only ever used for the `${tag} = ANY(${a.tags})` case in this app.
     sql:
@@ -185,6 +207,7 @@ export interface FakeDb {
   seedApiKey(apiKey: Partial<NewApiKey> & { orgId: string }): ApiKey;
   seedAsset(asset: Partial<NewAsset> & { orgId: string; publicId: string }): Asset;
   getAsset(id: string): Asset | undefined;
+  seedUsageDaily(row: Partial<NewUsageDaily> & { orgId: string; day: string }): UsageDaily;
   clear(): void;
 }
 
@@ -192,6 +215,7 @@ export function createFakeDbClient(): DbClient & { fake: FakeDb } {
   const orgsStore = new Map<string, Org>();
   const apiKeysStore = new Map<string, ApiKey>();
   const assetsStore = new Map<string, Asset>();
+  const usageDailyStore = new Map<string, UsageDaily>();
 
   const fake: FakeDb = {
     seedOrg(org) {
@@ -248,16 +272,30 @@ export function createFakeDbClient(): DbClient & { fake: FakeDb } {
     getAsset(id) {
       return assetsStore.get(id);
     },
+    seedUsageDaily(row) {
+      const full: UsageDaily = {
+        orgId: row.orgId,
+        day: row.day,
+        requests: row.requests ?? 0,
+        transforms: row.transforms ?? 0,
+        bandwidth: row.bandwidth ?? 0,
+        storage: row.storage ?? 0,
+      };
+      usageDailyStore.set(`${full.orgId}|${full.day}`, full);
+      return full;
+    },
     clear() {
       orgsStore.clear();
       apiKeysStore.clear();
       assetsStore.clear();
+      usageDailyStore.clear();
     },
   };
 
   const query = {
     apiKeys: createRelationalQuery(apiKeysStore),
     assets: createRelationalQuery(assetsStore),
+    usageDaily: createRelationalQuery(usageDailyStore),
   };
 
   const db = {
