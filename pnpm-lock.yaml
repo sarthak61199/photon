@@ -41,6 +41,9 @@ importers:
       '@photon/storage':
         specifier: workspace:*
         version: link:../../packages/storage
+      '@photon/utils':
+        specifier: workspace:*
+        version: link:../../packages/utils
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.2(pg@8.22.0)(postgres@3.4.9)
@@ -124,9 +127,15 @@ importers:
       '@photon/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@photon/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@photon/storage':
         specifier: workspace:*
         version: link:../../packages/storage
+      '@photon/utils':
+        specifier: workspace:*
+        version: link:../../packages/utils
       hono:
         specifier: ^4.12.32
         version: 4.12.32
@@ -218,6 +227,12 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: ^3.1098.0
         version: 3.1098.0
+    devDependencies:
+      '@types/node':
+        specifier: ^26.1.2
+        version: 26.1.2
+
+  packages/utils:
     devDependencies:
       '@types/node':
         specifier: ^26.1.2
