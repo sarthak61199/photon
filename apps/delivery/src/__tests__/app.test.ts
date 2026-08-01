@@ -11,6 +11,11 @@ vi.mock("../storage", async () => {
   return { getStorageClient: () => fakeStorage };
 });
 
+const recordRequestUsage = vi.fn();
+vi.mock("../usage", () => ({
+  recordRequestUsage: (...args: unknown[]) => recordRequestUsage(...args),
+}));
+
 const ORIGINAL_ENV = { ...process.env };
 const ORIGINAL_KEY = "orgs/acme/orig/products/shoe.jpg";
 
@@ -33,6 +38,7 @@ describe("GET /:org/:transforms/:path", () => {
   beforeEach(async () => {
     fixture = await createFixtureJpeg({ width: 40, height: 20 });
     fakeStorage.clear();
+    recordRequestUsage.mockClear();
   });
 
   afterEach(() => {
@@ -54,6 +60,11 @@ describe("GET /:org/:transforms/:path", () => {
     const buf = Buffer.from(await res.arrayBuffer());
     const meta = await sharp(buf).metadata();
     expect(meta.width).toBe(10);
+
+    expect(recordRequestUsage).toHaveBeenCalledWith("acme", {
+      transformed: true,
+      bytes: buf.length,
+    });
   });
 
   it("persists the derivative after a cache miss (write-behind)", async () => {
@@ -83,6 +94,10 @@ describe("GET /:org/:transforms/:path", () => {
     expect(res.status).toBe(200);
     expect(getSpy).toHaveBeenCalledWith(derivKey);
     expect(getSpy).not.toHaveBeenCalledWith(ORIGINAL_KEY);
+    expect(recordRequestUsage).toHaveBeenCalledWith("acme", {
+      transformed: false,
+      bytes: cached.length,
+    });
   });
 
   it("returns 404 when the original does not exist", async () => {

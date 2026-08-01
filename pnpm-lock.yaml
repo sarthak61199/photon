@@ -124,9 +124,6 @@ importers:
       '@photon/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@photon/db':
-        specifier: workspace:*
-        version: link:../../packages/db
       '@photon/storage':
         specifier: workspace:*
         version: link:../../packages/storage
@@ -136,6 +133,9 @@ importers:
       p-limit:
         specifier: ^7.3.1
         version: 7.3.1
+      pg-boss:
+        specifier: ^12.26.3
+        version: 12.26.3
       sharp:
         specifier: ^0.35.3
         version: 0.35.3(@types/node@26.1.2)

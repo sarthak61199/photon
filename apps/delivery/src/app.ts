@@ -21,6 +21,7 @@ import { renderDerivative, UnprocessableImageError } from "./render";
 import { deliveryHeaders } from "./response";
 import { getStorageClient } from "./storage";
 import { streamToBuffer } from "./stream";
+import { recordRequestUsage } from "./usage";
 
 export const app = new Hono();
 
@@ -45,6 +46,7 @@ app.get("/:org/:transforms/:path{.+}", async (c) => {
   try {
     const cached = await storage.get(derivKey);
     const buffer = await streamToBuffer(cached.stream);
+    recordRequestUsage(org, { transformed: false, bytes: buffer.length });
     return c.body(new Uint8Array(buffer), 200, deliveryHeaders(contentType, publicId));
   } catch (err) {
     if (!(err instanceof ObjectNotFoundError)) throw err;
@@ -66,6 +68,7 @@ app.get("/:org/:transforms/:path{.+}", async (c) => {
   });
 
   persistDerivative(storage, derivKey, buffer, contentType);
+  recordRequestUsage(org, { transformed: true, bytes: buffer.length });
 
   return c.body(new Uint8Array(buffer), 200, deliveryHeaders(contentType, publicId));
 });

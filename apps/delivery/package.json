@@ -14,10 +14,10 @@
   "dependencies": {
     "@hono/node-server": "^2.0.12",
     "@photon/core": "workspace:*",
-    "@photon/db": "workspace:*",
     "@photon/storage": "workspace:*",
     "hono": "^4.12.32",
     "p-limit": "^7.3.1",
+    "pg-boss": "^12.26.3",
     "sharp": "^0.35.3",
     "zod": "^4.4.3"
   },
