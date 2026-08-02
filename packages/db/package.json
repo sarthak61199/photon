@@ -20,6 +20,7 @@
   },
   "devDependencies": {
     "@types/node": "^26.1.2",
+    "dotenv": "catalog:",
     "drizzle-kit": "^0.31.10",
     "tsx": "^4.23.1"
   }

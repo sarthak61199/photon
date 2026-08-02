@@ -3,3 +3,5 @@ packages:
   - "packages/*"
 allowBuilds:
   esbuild: true
+catalog:
+  dotenv: ^17.4.2

@@ -17,6 +17,7 @@
     "@photon/db": "workspace:*",
     "@photon/storage": "workspace:*",
     "@photon/utils": "workspace:*",
+    "dotenv": "catalog:",
     "drizzle-orm": "^0.45.2",
     "hono": "^4.12.32",
     "pg-boss": "^12.26.3",
