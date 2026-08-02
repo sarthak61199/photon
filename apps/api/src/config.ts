@@ -1,3 +1,8 @@
+import { fileURLToPath } from "node:url";
+import { config as loadEnv } from "dotenv";
+
+loadEnv({ path: fileURLToPath(new URL("../../../.env", import.meta.url)), quiet: true });
+
 export interface ApiConfig {
   port: number;
   databaseUrl: string;

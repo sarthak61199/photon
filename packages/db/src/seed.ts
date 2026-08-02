@@ -1,6 +1,10 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { fileURLToPath } from "node:url";
+import { config as loadEnv } from "dotenv";
 import { createDbClient } from "./client";
 import { apiKeys, orgs } from "./schema";
+
+loadEnv({ path: fileURLToPath(new URL("../../../.env", import.meta.url)), quiet: true });
 
 async function main(): Promise<void> {
   const url = process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:5432/photon";

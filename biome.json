@@ -15,7 +15,8 @@
       "!**/.output",
       "!**/.vinxi",
       "!**/coverage",
-      "!**/routeTree.gen.ts"
+      "!**/routeTree.gen.ts",
+      "!**/drizzle/meta"
     ]
   },
   "formatter": {
