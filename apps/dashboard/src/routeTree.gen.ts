@@ -26,6 +26,7 @@ import { Route as AppPresetsPresetIdRouteImport } from './routes/_app/presets/$p
 import { Route as AppSettingsBillingRouteImport } from './routes/_app/settings/billing'
 import { Route as AppSettingsGeneralRouteImport } from './routes/_app/settings/general'
 import { Route as AppSettingsMembersRouteImport } from './routes/_app/settings/members'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -110,6 +111,11 @@ const AppSettingsMembersRoute = AppSettingsMembersRouteImport.update({
   path: '/settings/members',
   getParentRoute: () => AppRoute,
 } as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -125,6 +131,7 @@ export interface FileRoutesByFullPath {
   '/settings/billing': typeof AppSettingsBillingRoute
   '/settings/general': typeof AppSettingsGeneralRoute
   '/settings/members': typeof AppSettingsMembersRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/media/': typeof AppMediaIndexRoute
   '/presets/': typeof AppPresetsIndexRoute
 }
@@ -141,6 +148,7 @@ export interface FileRoutesByTo {
   '/settings/billing': typeof AppSettingsBillingRoute
   '/settings/general': typeof AppSettingsGeneralRoute
   '/settings/members': typeof AppSettingsMembersRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/media': typeof AppMediaIndexRoute
   '/presets': typeof AppPresetsIndexRoute
 }
@@ -161,6 +169,7 @@ export interface FileRoutesById {
   '/_app/settings/billing': typeof AppSettingsBillingRoute
   '/_app/settings/general': typeof AppSettingsGeneralRoute
   '/_app/settings/members': typeof AppSettingsMembersRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/_app/media/': typeof AppMediaIndexRoute
   '/_app/presets/': typeof AppPresetsIndexRoute
 }
@@ -180,6 +189,7 @@ export interface FileRouteTypes {
     | '/settings/billing'
     | '/settings/general'
     | '/settings/members'
+    | '/api/auth/$'
     | '/media/'
     | '/presets/'
   fileRoutesByTo: FileRoutesByTo
@@ -196,6 +206,7 @@ export interface FileRouteTypes {
     | '/settings/billing'
     | '/settings/general'
     | '/settings/members'
+    | '/api/auth/$'
     | '/media'
     | '/presets'
   id:
@@ -215,6 +226,7 @@ export interface FileRouteTypes {
     | '/_app/settings/billing'
     | '/_app/settings/general'
     | '/_app/settings/members'
+    | '/api/auth/$'
     | '/_app/media/'
     | '/_app/presets/'
   fileRoutesById: FileRoutesById
@@ -222,6 +234,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   AuthRoute: typeof AuthRouteWithChildren
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -345,6 +358,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsMembersRouteImport
       parentRoute: typeof AppRoute
     }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -407,6 +427,7 @@ const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   AuthRoute: AuthRouteWithChildren,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
