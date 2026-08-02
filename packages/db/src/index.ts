@@ -1,34 +1,43 @@
 export type { DbClient, DbConfig } from "./client";
 export { createDbClient } from "./client";
 export type {
+  Account,
   ApiKey,
   Asset,
   Derivative,
+  NewAccount,
   NewApiKey,
   NewAsset,
   NewDerivative,
   NewOrg,
+  NewSession,
   NewTransformPreset,
   NewUsageDaily,
   NewUsageEvent,
   NewUser,
+  NewVerification,
   NewWebhook,
   Org,
+  Session,
   TransformPreset,
   UsageDaily,
   UsageEvent,
   User,
+  Verification,
   Webhook,
 } from "./schema";
 export * as schema from "./schema";
 export {
+  accounts,
   apiKeys,
   assets,
   derivatives,
   orgs,
+  sessions,
   transformPresets,
   usageDaily,
   usageEvents,
   users,
+  verifications,
   webhooks,
 } from "./schema";
