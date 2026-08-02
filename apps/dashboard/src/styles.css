@@ -1,1 +1,26 @@
 @import "tailwindcss";
+@import "@fontsource/geist-sans/400.css";
+@import "@fontsource/geist-sans/500.css";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+
+@theme {
+  /* surfaces */
+  --color-surface-0: #141311;
+  --color-surface-1: #1d1b18;
+  --color-surface-2: #26231f;
+  --color-line: #33302a;
+
+  /* text */
+  --color-ink: #e8e4dc;
+  --color-ink-dim: #8f887c;
+
+  /* accent + signal */
+  --color-amber: #e0a64e;
+  --color-signal-ok: #7fb069;
+  --color-signal-err: #d0654b;
+
+  /* type */
+  --font-sans: "Geist Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}

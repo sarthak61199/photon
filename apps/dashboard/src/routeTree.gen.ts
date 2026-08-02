@@ -9,50 +9,404 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as AuthRouteImport } from './routes/_auth'
+import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AppMediaRouteImport } from './routes/_app/media'
+import { Route as AppUsageRouteImport } from './routes/_app/usage'
+import { Route as AuthLoginRouteImport } from './routes/_auth/login'
+import { Route as AuthSignupRouteImport } from './routes/_auth/signup'
+import { Route as AppDevelopersKeysRouteImport } from './routes/_app/developers/keys'
+import { Route as AppDevelopersLogsRouteImport } from './routes/_app/developers/logs'
+import { Route as AppDevelopersWebhooksRouteImport } from './routes/_app/developers/webhooks'
+import { Route as AppMediaIndexRouteImport } from './routes/_app/media/index'
+import { Route as AppMediaAssetIdRouteImport } from './routes/_app/media/$assetId'
+import { Route as AppPresetsIndexRouteImport } from './routes/_app/presets/index'
+import { Route as AppPresetsPresetIdRouteImport } from './routes/_app/presets/$presetId'
+import { Route as AppSettingsBillingRouteImport } from './routes/_app/settings/billing'
+import { Route as AppSettingsGeneralRouteImport } from './routes/_app/settings/general'
+import { Route as AppSettingsMembersRouteImport } from './routes/_app/settings/members'
 
-const IndexRoute = IndexRouteImport.update({
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/_auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMediaRoute = AppMediaRouteImport.update({
+  id: '/media',
+  path: '/media',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppUsageRoute = AppUsageRouteImport.update({
+  id: '/usage',
+  path: '/usage',
+  getParentRoute: () => AppRoute,
+} as any)
+const AuthLoginRoute = AuthLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthSignupRoute = AuthSignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AppDevelopersKeysRoute = AppDevelopersKeysRouteImport.update({
+  id: '/developers/keys',
+  path: '/developers/keys',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDevelopersLogsRoute = AppDevelopersLogsRouteImport.update({
+  id: '/developers/logs',
+  path: '/developers/logs',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDevelopersWebhooksRoute = AppDevelopersWebhooksRouteImport.update({
+  id: '/developers/webhooks',
+  path: '/developers/webhooks',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMediaIndexRoute = AppMediaIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppMediaRoute,
+} as any)
+const AppMediaAssetIdRoute = AppMediaAssetIdRouteImport.update({
+  id: '/$assetId',
+  path: '/$assetId',
+  getParentRoute: () => AppMediaRoute,
+} as any)
+const AppPresetsIndexRoute = AppPresetsIndexRouteImport.update({
+  id: '/presets/',
+  path: '/presets/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPresetsPresetIdRoute = AppPresetsPresetIdRouteImport.update({
+  id: '/presets/$presetId',
+  path: '/presets/$presetId',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsBillingRoute = AppSettingsBillingRouteImport.update({
+  id: '/settings/billing',
+  path: '/settings/billing',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsGeneralRoute = AppSettingsGeneralRouteImport.update({
+  id: '/settings/general',
+  path: '/settings/general',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsMembersRoute = AppSettingsMembersRouteImport.update({
+  id: '/settings/members',
+  path: '/settings/members',
+  getParentRoute: () => AppRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof AppIndexRoute
+  '/media': typeof AppMediaRouteWithChildren
+  '/usage': typeof AppUsageRoute
+  '/login': typeof AuthLoginRoute
+  '/signup': typeof AuthSignupRoute
+  '/developers/keys': typeof AppDevelopersKeysRoute
+  '/developers/logs': typeof AppDevelopersLogsRoute
+  '/developers/webhooks': typeof AppDevelopersWebhooksRoute
+  '/media/$assetId': typeof AppMediaAssetIdRoute
+  '/presets/$presetId': typeof AppPresetsPresetIdRoute
+  '/settings/billing': typeof AppSettingsBillingRoute
+  '/settings/general': typeof AppSettingsGeneralRoute
+  '/settings/members': typeof AppSettingsMembersRoute
+  '/media/': typeof AppMediaIndexRoute
+  '/presets/': typeof AppPresetsIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/': typeof AppIndexRoute
+  '/usage': typeof AppUsageRoute
+  '/login': typeof AuthLoginRoute
+  '/signup': typeof AuthSignupRoute
+  '/developers/keys': typeof AppDevelopersKeysRoute
+  '/developers/logs': typeof AppDevelopersLogsRoute
+  '/developers/webhooks': typeof AppDevelopersWebhooksRoute
+  '/media/$assetId': typeof AppMediaAssetIdRoute
+  '/presets/$presetId': typeof AppPresetsPresetIdRoute
+  '/settings/billing': typeof AppSettingsBillingRoute
+  '/settings/general': typeof AppSettingsGeneralRoute
+  '/settings/members': typeof AppSettingsMembersRoute
+  '/media': typeof AppMediaIndexRoute
+  '/presets': typeof AppPresetsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/_app': typeof AppRouteWithChildren
+  '/_auth': typeof AuthRouteWithChildren
+  '/_app/media': typeof AppMediaRouteWithChildren
+  '/_app/usage': typeof AppUsageRoute
+  '/_auth/login': typeof AuthLoginRoute
+  '/_auth/signup': typeof AuthSignupRoute
+  '/_app/': typeof AppIndexRoute
+  '/_app/developers/keys': typeof AppDevelopersKeysRoute
+  '/_app/developers/logs': typeof AppDevelopersLogsRoute
+  '/_app/developers/webhooks': typeof AppDevelopersWebhooksRoute
+  '/_app/media/$assetId': typeof AppMediaAssetIdRoute
+  '/_app/presets/$presetId': typeof AppPresetsPresetIdRoute
+  '/_app/settings/billing': typeof AppSettingsBillingRoute
+  '/_app/settings/general': typeof AppSettingsGeneralRoute
+  '/_app/settings/members': typeof AppSettingsMembersRoute
+  '/_app/media/': typeof AppMediaIndexRoute
+  '/_app/presets/': typeof AppPresetsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/media'
+    | '/usage'
+    | '/login'
+    | '/signup'
+    | '/developers/keys'
+    | '/developers/logs'
+    | '/developers/webhooks'
+    | '/media/$assetId'
+    | '/presets/$presetId'
+    | '/settings/billing'
+    | '/settings/general'
+    | '/settings/members'
+    | '/media/'
+    | '/presets/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/usage'
+    | '/login'
+    | '/signup'
+    | '/developers/keys'
+    | '/developers/logs'
+    | '/developers/webhooks'
+    | '/media/$assetId'
+    | '/presets/$presetId'
+    | '/settings/billing'
+    | '/settings/general'
+    | '/settings/members'
+    | '/media'
+    | '/presets'
+  id:
+    | '__root__'
+    | '/_app'
+    | '/_auth'
+    | '/_app/media'
+    | '/_app/usage'
+    | '/_auth/login'
+    | '/_auth/signup'
+    | '/_app/'
+    | '/_app/developers/keys'
+    | '/_app/developers/logs'
+    | '/_app/developers/webhooks'
+    | '/_app/media/$assetId'
+    | '/_app/presets/$presetId'
+    | '/_app/settings/billing'
+    | '/_app/settings/general'
+    | '/_app/settings/members'
+    | '/_app/media/'
+    | '/_app/presets/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
+  AuthRoute: typeof AuthRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_auth': {
+      id: '/_auth'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/': {
+      id: '/_app/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/media': {
+      id: '/_app/media'
+      path: '/media'
+      fullPath: '/media'
+      preLoaderRoute: typeof AppMediaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/usage': {
+      id: '/_app/usage'
+      path: '/usage'
+      fullPath: '/usage'
+      preLoaderRoute: typeof AppUsageRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_auth/login': {
+      id: '/_auth/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof AuthLoginRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/signup': {
+      id: '/_auth/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof AuthSignupRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_app/developers/keys': {
+      id: '/_app/developers/keys'
+      path: '/developers/keys'
+      fullPath: '/developers/keys'
+      preLoaderRoute: typeof AppDevelopersKeysRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/developers/logs': {
+      id: '/_app/developers/logs'
+      path: '/developers/logs'
+      fullPath: '/developers/logs'
+      preLoaderRoute: typeof AppDevelopersLogsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/developers/webhooks': {
+      id: '/_app/developers/webhooks'
+      path: '/developers/webhooks'
+      fullPath: '/developers/webhooks'
+      preLoaderRoute: typeof AppDevelopersWebhooksRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/media/': {
+      id: '/_app/media/'
+      path: '/'
+      fullPath: '/media/'
+      preLoaderRoute: typeof AppMediaIndexRouteImport
+      parentRoute: typeof AppMediaRoute
+    }
+    '/_app/media/$assetId': {
+      id: '/_app/media/$assetId'
+      path: '/$assetId'
+      fullPath: '/media/$assetId'
+      preLoaderRoute: typeof AppMediaAssetIdRouteImport
+      parentRoute: typeof AppMediaRoute
+    }
+    '/_app/presets/': {
+      id: '/_app/presets/'
+      path: '/presets'
+      fullPath: '/presets/'
+      preLoaderRoute: typeof AppPresetsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/presets/$presetId': {
+      id: '/_app/presets/$presetId'
+      path: '/presets/$presetId'
+      fullPath: '/presets/$presetId'
+      preLoaderRoute: typeof AppPresetsPresetIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/billing': {
+      id: '/_app/settings/billing'
+      path: '/settings/billing'
+      fullPath: '/settings/billing'
+      preLoaderRoute: typeof AppSettingsBillingRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/general': {
+      id: '/_app/settings/general'
+      path: '/settings/general'
+      fullPath: '/settings/general'
+      preLoaderRoute: typeof AppSettingsGeneralRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/members': {
+      id: '/_app/settings/members'
+      path: '/settings/members'
+      fullPath: '/settings/members'
+      preLoaderRoute: typeof AppSettingsMembersRouteImport
+      parentRoute: typeof AppRoute
     }
   }
 }
 
+interface AppMediaRouteChildren {
+  AppMediaAssetIdRoute: typeof AppMediaAssetIdRoute
+  AppMediaIndexRoute: typeof AppMediaIndexRoute
+}
+
+const AppMediaRouteChildren: AppMediaRouteChildren = {
+  AppMediaAssetIdRoute: AppMediaAssetIdRoute,
+  AppMediaIndexRoute: AppMediaIndexRoute,
+}
+
+const AppMediaRouteWithChildren = AppMediaRoute._addFileChildren(
+  AppMediaRouteChildren,
+)
+
+interface AppRouteChildren {
+  AppMediaRoute: typeof AppMediaRouteWithChildren
+  AppUsageRoute: typeof AppUsageRoute
+  AppIndexRoute: typeof AppIndexRoute
+  AppDevelopersKeysRoute: typeof AppDevelopersKeysRoute
+  AppDevelopersLogsRoute: typeof AppDevelopersLogsRoute
+  AppDevelopersWebhooksRoute: typeof AppDevelopersWebhooksRoute
+  AppPresetsPresetIdRoute: typeof AppPresetsPresetIdRoute
+  AppSettingsBillingRoute: typeof AppSettingsBillingRoute
+  AppSettingsGeneralRoute: typeof AppSettingsGeneralRoute
+  AppSettingsMembersRoute: typeof AppSettingsMembersRoute
+  AppPresetsIndexRoute: typeof AppPresetsIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppMediaRoute: AppMediaRouteWithChildren,
+  AppUsageRoute: AppUsageRoute,
+  AppIndexRoute: AppIndexRoute,
+  AppDevelopersKeysRoute: AppDevelopersKeysRoute,
+  AppDevelopersLogsRoute: AppDevelopersLogsRoute,
+  AppDevelopersWebhooksRoute: AppDevelopersWebhooksRoute,
+  AppPresetsPresetIdRoute: AppPresetsPresetIdRoute,
+  AppSettingsBillingRoute: AppSettingsBillingRoute,
+  AppSettingsGeneralRoute: AppSettingsGeneralRoute,
+  AppSettingsMembersRoute: AppSettingsMembersRoute,
+  AppPresetsIndexRoute: AppPresetsIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
+interface AuthRouteChildren {
+  AuthLoginRoute: typeof AuthLoginRoute
+  AuthSignupRoute: typeof AuthSignupRoute
+}
+
+const AuthRouteChildren: AuthRouteChildren = {
+  AuthLoginRoute: AuthLoginRoute,
+  AuthSignupRoute: AuthSignupRoute,
+}
+
+const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
+  AuthRoute: AuthRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
